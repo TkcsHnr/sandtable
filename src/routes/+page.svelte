@@ -5,6 +5,7 @@
 	import { machineState } from '$lib/stores';
 	import { closeSocket, openSocket, setMessageCallback } from '$lib/websocket';
 	import { onMount, onDestroy } from 'svelte';
+	import type { PageData } from './$types';
 
 	function handleMessage(data: string) {
 		const message = JSON.parse(data);
@@ -18,10 +19,13 @@
 	onDestroy(() => {
 		closeSocket();
 	});
+
+	export let data: PageData;
+
 </script>
 
 <main class="flex flex-col items-center p-8 gap-4">
 	<!-- <Controls /> -->
-	<Canvas />
+	<Canvas patterns={data.patterns}/>
 	<!-- <Stats /> -->
 </main>
