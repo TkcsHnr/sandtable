@@ -74,7 +74,7 @@
 		let x: number = 0;
 		let y: number = 0;
 		clear();
-		startDrawing({x, y});
+		startDrawing({ x, y });
 		for (let line of lines) {
 			line.trim();
 			if (line.startsWith(';') || line == '') continue;
@@ -84,7 +84,7 @@
 				if ('X' in tokens) x = parseFloat(tokens['X'].toString());
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
-				draw({x, y});
+				draw({ x, y });
 			}
 		}
 		stopDrawing();
@@ -120,7 +120,7 @@
 		};
 		reader.readAsText(selectedFile);
 	}
-	function getCanvasCoords(event:MouseEvent|TouchEvent) {
+	function getCanvasCoords(event: MouseEvent | TouchEvent) {
 		const rect = canvas.getBoundingClientRect();
 		const scaleX = canvas.width / rect.width;
 		const scaleY = canvas.height / rect.height;
@@ -154,46 +154,51 @@
 	});
 </script>
 
-<div class="flex gap-2 flex-wrap">
-	<button class="btn" onclick={clear}>
-		Clear
-		<i class="fa-solid fa-eraser"></i>
-	</button>
-	<input
-		id="gcode"
-		type="file"
-		accept=".gcode"
-		class="hidden"
-		onchange={(e) => handleFileChange(e)}
-	/>
-	<select
-		bind:this={patternSelector}
-		class="select select-bordered w-fit max-w-40 bg-base-200 border-none"
-		onchange={handlePatternChange}
-		onfocus={() => {
-			patternSelector.selectedIndex = 0;
-		}}
-	>
-		<option value="" disabled selected>Select pattern</option>
-		{#each patterns as pattern}
-			<option value="/patterns/{pattern}">{pattern}</option>
-		{/each}
-	</select>
-	<label for="gcode" class="btn"> Upload .gcode </label>
-	<button class="btn" onclick={() => sendMessage('draw', points)}>
-		Send
-		<i class="fa-solid fa-paper-plane"></i>
-	</button>
+<div class="flex flex-col items-center">
+	<div class="flex gap-2 justify-center bg-neutral p-4 rounded-t-box w-full max-w-[490px]">
+		<button class="btn" onclick={clear}>
+			<span class="hidden sm:block">Clear</span>
+			<i class="fa-solid fa-eraser"></i>
+		</button>
+		<input
+			id="gcode"
+			type="file"
+			accept=".gcode"
+			class="hidden"
+			onchange={(e) => handleFileChange(e)}
+		/>
+		<label for="gcode" class="btn">
+			<span class="hidden sm:block">Upload</span>
+			<i class="fa-solid fa-upload"></i>
+		</label>
+		<select
+			bind:this={patternSelector}
+			class="select select-bordered min-w-0 w-full bg-base-200 border-none"
+			onchange={handlePatternChange}
+			onfocus={() => {
+				patternSelector.selectedIndex = 0;
+			}}
+		>
+			<option value="" disabled selected>Patterns</option>
+			{#each patterns as pattern}
+				<option value="/patterns/{pattern}">{pattern}</option>
+			{/each}
+		</select>
+		<button class="btn" onclick={() => sendMessage('draw', points)}>
+			<span class="hidden sm:block">Send</span>
+			<i class="fa-solid fa-paper-plane"></i>
+		</button>
+	</div>
+	<canvas
+		bind:this={canvas}
+		onmousedown={(e) => startDrawing(getCanvasCoords(e))}
+		onmousemove={(e) => draw(getCanvasCoords(e))}
+		onmouseup={stopDrawing}
+		ontouchstart={(e) => startDrawing(getCanvasCoords(e))}
+		ontouchmove={(e) => draw(getCanvasCoords(e))}
+		ontouchend={stopDrawing}
+		width="490"
+		height="490"
+		class="touch-none bg-yellow-100 max-w-[490px] w-full"
+	></canvas>
 </div>
-<canvas
-	bind:this={canvas}
-	onmousedown={(e) => startDrawing(getCanvasCoords(e))}
-	onmousemove={(e) => draw(getCanvasCoords(e))}
-	onmouseup={stopDrawing}
-	ontouchstart={(e) => startDrawing(getCanvasCoords(e))}
-	ontouchmove={(e) => draw(getCanvasCoords(e))}
-	ontouchend={stopDrawing}
-	width="490"
-	height="490"
-	class="touch-none bg-yellow-100 max-w-[490px] w-full"
-></canvas>

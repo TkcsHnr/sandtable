@@ -1,11 +1,13 @@
 <script lang="ts">
 	import Canvas from '$lib/Canvas.svelte';
-	import Controls from '$lib/Controls.svelte';
+	import MovementControl from '$lib/MovementControl.svelte';
 	import Stats from '$lib/Stats.svelte';
-	import { machineState } from '$lib/stores';
 	import { closeSocket, openSocket, setMessageCallback } from '$lib/websocket';
 	import { onMount, onDestroy } from 'svelte';
 	import type { PageData } from './$types';
+	import LedControl from '$lib/LedControl.svelte';
+	import FeedrateControl from '$lib/FeedrateControl.svelte';
+	import RunControl from '$lib/RunControl.svelte';
 
 	function handleMessage(data: string) {
 		const message = JSON.parse(data);
@@ -21,11 +23,17 @@
 	});
 
 	export let data: PageData;
-
 </script>
 
-<main class="flex flex-col items-center p-8 gap-2">
-	<Controls />
+<main class="flex flex-col items-center p-8 gap-4">
+	<div class="flex gap-4 w-full flex-wrap justify-center items-center">
+		<MovementControl />
+		<RunControl />
+		<div class="flex flex-col gap-4 max-w-xs w-full">
+			<LedControl />
+			<FeedrateControl />
+		</div>
+	</div>
 	<Stats />
-	<Canvas patterns={data.patterns}/>
+	<Canvas patterns={data.patterns} />
 </main>
