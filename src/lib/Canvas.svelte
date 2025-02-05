@@ -22,42 +22,30 @@
 		return points;
 	}
 
-	function startDrawing(x: number, y: number) {
+	function startDrawing(p: point) {
 		drawing = true;
-		points.push({ x, y });
-		draw(x, y);
+		points.push(p);
+		draw(p);
 	}
 
-	function draw(x: number, y: number) {
+	function draw(p: point) {
 		if (!ctx) return;
 		if (!drawing) return;
 
 		ctx.beginPath();
 		ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
-		
+
 		ctx.strokeStyle = orange[300];
 		ctx.lineWidth = 6;
-		ctx.lineTo(x, y);
+		ctx.lineTo(p.x, p.y);
 		ctx.stroke();
 
 		ctx.strokeStyle = orange[200];
 		ctx.lineWidth = 4;
-		ctx.lineTo(x, y);
+		ctx.lineTo(p.x, p.y);
 		ctx.stroke();
-		
-		points.push({ x, y });
-	}
 
-	function handleTouchStart(e: TouchEvent) {
-		e.preventDefault();
-		const touch = e.touches[0];
-		startDrawing(touch.clientX - canvas.offsetLeft, touch.clientY - canvas.offsetTop);
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		e.preventDefault();
-		const touch = e.touches[0];
-		draw(touch.clientX - canvas.offsetLeft, touch.clientY - canvas.offsetTop);
+		points.push(p);
 	}
 
 	function stopDrawing() {
@@ -76,7 +64,6 @@
 
 			if (code) {
 				tokens[code] = parsedValue;
-				console.log(code, parsedValue);
 			}
 		}
 
@@ -87,7 +74,7 @@
 		let x: number = 0;
 		let y: number = 0;
 		clear();
-		startDrawing(x, y);
+		startDrawing({x, y});
 		for (let line of lines) {
 			line.trim();
 			if (line.startsWith(';') || line == '') continue;
@@ -97,7 +84,7 @@
 				if ('X' in tokens) x = parseFloat(tokens['X'].toString());
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
-				draw(x, y);
+				draw({x, y});
 			}
 		}
 		stopDrawing();
@@ -133,57 +120,80 @@
 		};
 		reader.readAsText(selectedFile);
 	}
+	function getCanvasCoords(event:MouseEvent|TouchEvent) {
+		const rect = canvas.getBoundingClientRect();
+		const scaleX = canvas.width / rect.width;
+		const scaleY = canvas.height / rect.height;
+
+		let clientX, clientY;
+
+		if (event instanceof TouchEvent) {
+			clientX = event.touches[0].clientX;
+			clientY = event.touches[0].clientY;
+		} else {
+			clientX = event.clientX;
+			clientY = event.clientY;
+		}
+
+		const x = (clientX - rect.left) * scaleX;
+		const y = (clientY - rect.top) * scaleY;
+
+		const invertedY = canvas.height - y;
+
+		return { x, y: invertedY };
+	}
 
 	onMount(() => {
 		ctx = canvas.getContext('2d');
 		if (ctx) {
 			ctx.lineJoin = 'round';
 			ctx.lineCap = 'round';
+			ctx.translate(0, canvas.height);
+			ctx.scale(1, -1);
 		}
 	});
 </script>
 
-<div class="flex flex-col gap-2 items-end">
-	<div class="flex gap-2">
-		<button class="btn" onclick={clear}>
-			Clear
-			<i class="fa-solid fa-eraser"></i>
-		</button>
-		<input
-			id="gcode"
-			type="file"
-			accept=".gcode"
-			class="hidden"
-			onchange={(e) => handleFileChange(e)}
-		/>
-		<select
-			bind:this={patternSelector}
-			class="select select-bordered w-fit max-w-40"
-			onchange={handlePatternChange}
-			onfocus={() => {
-				patternSelector.selectedIndex = -1;
-			}}
-		>
-			{#each patterns as pattern}
-				<option value="/patterns/{pattern}">{pattern}</option>
-			{/each}
-		</select>
-		<label for="gcode" class="btn"> Upload .gcode </label>
-		<button class="btn" onclick={() => sendMessage('draw', points)}>
-			Send
-			<i class="fa-solid fa-paper-plane"></i>
-		</button>
-	</div>
-	<canvas
-		bind:this={canvas}
-		onmousedown={(e) => startDrawing(e.offsetX, e.offsetY)}
-		onmousemove={(e) => draw(e.offsetX, e.offsetY)}
-		onmouseup={stopDrawing}
-		ontouchstart={(e) => handleTouchStart(e)}
-		ontouchmove={(e) => handleTouchMove(e)}
-		ontouchend={stopDrawing}
-		width="490"
-		height="490"
-		class="touch-none bg-yellow-100"
-	></canvas>
+<div class="flex gap-2 flex-wrap">
+	<button class="btn" onclick={clear}>
+		Clear
+		<i class="fa-solid fa-eraser"></i>
+	</button>
+	<input
+		id="gcode"
+		type="file"
+		accept=".gcode"
+		class="hidden"
+		onchange={(e) => handleFileChange(e)}
+	/>
+	<select
+		bind:this={patternSelector}
+		class="select select-bordered w-fit max-w-40 bg-base-200 border-none"
+		onchange={handlePatternChange}
+		onfocus={() => {
+			patternSelector.selectedIndex = 0;
+		}}
+	>
+		<option value="" disabled selected>Select pattern</option>
+		{#each patterns as pattern}
+			<option value="/patterns/{pattern}">{pattern}</option>
+		{/each}
+	</select>
+	<label for="gcode" class="btn"> Upload .gcode </label>
+	<button class="btn" onclick={() => sendMessage('draw', points)}>
+		Send
+		<i class="fa-solid fa-paper-plane"></i>
+	</button>
 </div>
+<canvas
+	bind:this={canvas}
+	onmousedown={(e) => startDrawing(getCanvasCoords(e))}
+	onmousemove={(e) => draw(getCanvasCoords(e))}
+	onmouseup={stopDrawing}
+	ontouchstart={(e) => startDrawing(getCanvasCoords(e))}
+	ontouchmove={(e) => draw(getCanvasCoords(e))}
+	ontouchend={stopDrawing}
+	width="490"
+	height="490"
+	class="touch-none bg-yellow-100 max-w-[490px] w-full"
+></canvas>

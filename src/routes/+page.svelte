@@ -24,8 +24,8 @@
 
 </script>
 
-<main class="flex flex-col items-center p-8 gap-4">
-	<!-- <Controls /> -->
+<main class="flex flex-col items-center p-8 gap-2">
+	<Controls />
+	<Stats />
 	<Canvas patterns={data.patterns}/>
-	<!-- <Stats /> -->
 </main>
