@@ -6,7 +6,5 @@ export const load = (async () => {
 		filePath.replace('/static/patterns/', '')
 	);
 
-    console.log(patternNames);
-
 	return { patterns: patternNames };
 }) satisfies PageServerLoad;

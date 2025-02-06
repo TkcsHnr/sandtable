@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { sendMessage } from './websocket';
 	import colors from 'tailwindcss/colors';
+	import { waitForAck, ws, WSCmdType_t } from './websocket';
 	const { amber, orange, yellow } = colors;
 
-	type point = { x: number; y: number };
-	let points: point[] = [];
+	let pointNums: number[] = [];
 
 	let canvas: HTMLCanvasElement;
 	let ctx: CanvasRenderingContext2D | null;
@@ -14,38 +13,38 @@
 	export let patterns: string[];
 
 	export function clear() {
-		points = [];
+		pointNums = [];
 		ctx?.clearRect(0, 0, canvas.width, canvas.height);
 	}
 
-	export function getPoints() {
-		return points;
+	export function getpointNums() {
+		return pointNums;
 	}
 
-	function startDrawing(p: point) {
+	function startDrawing(x: number, y: number) {
 		drawing = true;
-		points.push(p);
-		draw(p);
+		pointNums.push(x, y);
+		draw(x, y);
 	}
 
-	function draw(p: point) {
+	function draw(x: number, y: number) {
 		if (!ctx) return;
 		if (!drawing) return;
 
 		ctx.beginPath();
-		ctx.moveTo(points[points.length - 1].x, points[points.length - 1].y);
+		ctx.moveTo(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1]);
 
 		ctx.strokeStyle = orange[300];
 		ctx.lineWidth = 6;
-		ctx.lineTo(p.x, p.y);
+		ctx.lineTo(x, y);
 		ctx.stroke();
 
 		ctx.strokeStyle = orange[200];
 		ctx.lineWidth = 4;
-		ctx.lineTo(p.x, p.y);
+		ctx.lineTo(x, y);
 		ctx.stroke();
 
-		points.push(p);
+		pointNums.push(x, y);
 	}
 
 	function stopDrawing() {
@@ -74,7 +73,7 @@
 		let x: number = 0;
 		let y: number = 0;
 		clear();
-		startDrawing({ x, y });
+		startDrawing(x, y);
 		for (let line of lines) {
 			line.trim();
 			if (line.startsWith(';') || line == '') continue;
@@ -84,7 +83,7 @@
 				if ('X' in tokens) x = parseFloat(tokens['X'].toString());
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
-				draw({ x, y });
+				draw(x, y);
 			}
 		}
 		stopDrawing();
@@ -120,7 +119,8 @@
 		};
 		reader.readAsText(selectedFile);
 	}
-	function getCanvasCoords(event: MouseEvent | TouchEvent) {
+
+	function getCanvasCoords(event: MouseEvent | TouchEvent): [number, number] {
 		const rect = canvas.getBoundingClientRect();
 		const scaleX = canvas.width / rect.width;
 		const scaleY = canvas.height / rect.height;
@@ -140,7 +140,45 @@
 
 		const invertedY = canvas.height - y;
 
-		return { x, y: invertedY };
+		return [x, invertedY];
+	}
+
+	function scaleNum(num: number) {
+		return Math.round(num * 100)
+	}
+
+	async function sendDataFragments(coordinatePairs: number = 256) {
+		if (ws.readyState == ws.OPEN) {
+			ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_START]));
+			console.log("Waiting for acknowledgement...");
+			await waitForAck();
+			console.log("Carry on!");
+
+			let nums = coordinatePairs * 2;
+			let buffer = new ArrayBuffer(1 + (2 * nums)); // 1byte command + 2byte numbers
+			let dataView = new DataView(buffer);
+			let offset = 0;
+			dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
+			while(offset <= pointNums.length - nums) {
+				for(let i = 0; i < nums; i++) {
+					dataView.setUint16(1 + i*2, scaleNum(pointNums[offset + i]));
+				}
+				ws.send(dataView.buffer);
+				await waitForAck();
+				offset += 2*nums;
+			}
+			if(offset < pointNums.length) {
+				let len = pointNums.length - offset;
+				for(let i = 0; i < len; i++) {
+					dataView.setUint16(1 + i*2, scaleNum(pointNums[offset + i]));
+				}
+				let sliced = dataView.buffer.slice(0, len*2);
+				ws.send(sliced);
+				await waitForAck();
+			}
+			ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
+			await waitForAck();
+		}
 	}
 
 	onMount(() => {
@@ -184,18 +222,18 @@
 				<option value="/patterns/{pattern}">{pattern}</option>
 			{/each}
 		</select>
-		<button class="btn" onclick={() => sendMessage('draw', points)}>
+		<button class="btn" onclick={() => sendDataFragments()}>
 			<span class="hidden sm:block">Send</span>
 			<i class="fa-solid fa-paper-plane"></i>
 		</button>
 	</div>
 	<canvas
 		bind:this={canvas}
-		onmousedown={(e) => startDrawing(getCanvasCoords(e))}
-		onmousemove={(e) => draw(getCanvasCoords(e))}
+		onmousedown={(e) => startDrawing(...getCanvasCoords(e))}
+		onmousemove={(e) => draw(...getCanvasCoords(e))}
 		onmouseup={stopDrawing}
-		ontouchstart={(e) => startDrawing(getCanvasCoords(e))}
-		ontouchmove={(e) => draw(getCanvasCoords(e))}
+		ontouchstart={(e) => startDrawing(...getCanvasCoords(e))}
+		ontouchmove={(e) => draw(...getCanvasCoords(e))}
 		ontouchend={stopDrawing}
 		width="490"
 		height="490"

@@ -2,12 +2,13 @@
 	import Canvas from '$lib/Canvas.svelte';
 	import MovementControl from '$lib/MovementControl.svelte';
 	import Stats from '$lib/Stats.svelte';
-	import { closeSocket, openSocket, setMessageCallback } from '$lib/websocket';
+	import { closeSocket, openSocket } from '$lib/websocket';
 	import { onMount, onDestroy } from 'svelte';
 	import type { PageData } from './$types';
 	import LedControl from '$lib/LedControl.svelte';
 	import FeedrateControl from '$lib/FeedrateControl.svelte';
 	import RunControl from '$lib/RunControl.svelte';
+	import FanControl from '$lib/FanControl.svelte';
 
 	function handleMessage(data: string) {
 		const message = JSON.parse(data);
@@ -16,7 +17,6 @@
 
 	onMount(() => {
 		openSocket();
-		setMessageCallback(handleMessage);
 	});
 	onDestroy(() => {
 		closeSocket();
@@ -32,6 +32,7 @@
 		<div class="flex flex-col gap-4 max-w-xs w-full">
 			<LedControl />
 			<FeedrateControl />
+			<FanControl />
 		</div>
 	</div>
 	<Stats />

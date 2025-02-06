@@ -1,13 +1,8 @@
 <script lang="ts">
 	import { machineState } from './stores';
-	import { sendMessage } from './websocket';
+	import { sendTextMessage } from './websocket';
 
-	let range: HTMLInputElement;
-	function setFeedrate() {
-		sendMessage('feedrate', {
-			value: range.value
-		});
-	}
+	let value = $machineState.feedrate;
 </script>
 
 <div class="flex justify-center gap-2 items-center">
@@ -16,10 +11,10 @@
 		type="range"
 		min="200"
 		max="4000"
-		value={$machineState.feedrate}
+		step="1"
+		bind:value
 		class="range range-sm"
-		on:change={setFeedrate}
-		bind:this={range}
+		on:change={() => sendTextMessage("feedrate", value)}
 	/>
 	<div class="flex">
 		<i class="fa-solid fa-angle-right -mr-1"></i>

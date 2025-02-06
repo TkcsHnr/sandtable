@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { sendMessage } from './websocket';
 	import { machineState } from '$lib/stores';
+	import { ws, WSCmdType_t } from './websocket';
 
 	function home() {
-		sendMessage('home');
+		ws.send(new Uint8Array([WSCmdType_t.WSCmdType_HOME]));
 	}
 	function move(dx: number, dy: number) {
-		sendMessage('move', dx, dy);
+		ws.send(new Uint8Array([WSCmdType_t.WSCmdType_MOVE, dx, dy]));
 	}
 </script>
 

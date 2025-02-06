@@ -48,7 +48,7 @@
 		<div class="stat">
 			<div class="stat-title">Brightness</div>
 			<div class="stat-value">
-				{$machineState.led}%
+				{$machineState.led / 255}%
 			</div>
 		</div>
 	</div>
