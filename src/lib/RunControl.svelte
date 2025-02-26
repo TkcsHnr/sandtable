@@ -1,24 +1,32 @@
 <script lang="ts">
-	import { machineState } from './stores';
-	import { sendTextMessage } from './websocket';
+	import { MachineState, machineStats } from './stores';
+	import { sendPause, sendResume, sendStart, sendStop, ws } from './websocket';
 
-	$: state = $machineState.state;
+	$: state = $machineStats.state;
+
+	function startPauseToggleButton() {
+		if(state == MachineState.BUSY) 
+			sendPause();
+		if(state == MachineState.IDLE)
+			sendStart();
+		if(state == MachineState.PAUSED)
+			sendResume();
+	}
 </script>
 
-<div class="flex gap-2">
+<div class="flex flex-col gap-1">
 	<button
 		class="btn btn-square"
-		aria-label={state == 'busy' ? 'Pause' : 'Resume'}
-		disabled={state == 'idle'}
-		onclick={() => sendTextMessage(state == 'paused' ? 'resume' : 'pause')}
+		aria-label={state == MachineState.BUSY ? 'Pause' : state == MachineState.IDLE ? 'Start' : 'Resume'}
+		onclick={startPauseToggleButton}
 	>
-		<i class="fa-solid {state == 'busy' ? 'fa-pause' : 'fa-play'}"></i>
+		<i class="fa-solid {state == MachineState.BUSY ? 'fa-pause' : 'fa-play'}"></i>
 	</button>
 	<button
 		class="btn btn-square"
 		aria-label="Stop"
-		disabled={state == 'idle'}
-		onclick={() => sendTextMessage("stop")}
+		disabled={state == MachineState.IDLE}
+		onclick={sendStop}
 	>
 		<i class="fa-solid fa-stop"></i>
 	</button>
