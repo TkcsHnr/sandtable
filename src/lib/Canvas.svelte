@@ -52,6 +52,27 @@
 		drawing = false;
 	}
 
+	async function preciseMessageDelay(iterations = 1) {
+		for (let i = 0; i < iterations; i++) {
+			await new Promise((resolve) => {
+				const mc = new MessageChannel();
+				mc.port1.onmessage = resolve;
+				mc.port2.postMessage(null);
+			});
+		}
+	}
+	
+	async function previewPattern(delay = 1) {
+		let pointsCopy = structuredClone(pointNums);
+		clear();
+		startDrawing();
+		for(let i = 0; i < pointsCopy.length; i += 2) {
+			draw(pointsCopy[i], pointsCopy[i+1]);
+			await preciseMessageDelay(delay);
+		}
+		stopDrawing();
+	}
+
 	function tokenizeGCodeLine(line: string): { [key: string]: string | number } {
 		const tokens: { [key: string]: string | number } = {};
 		const words = line.trim().split(/\s+/);
@@ -70,17 +91,7 @@
 		return tokens;
 	}
 
-	async function preciseMessageDelay(iterations = 1) {
-		for (let i = 0; i < iterations; i++) {
-			await new Promise((resolve) => {
-				const mc = new MessageChannel();
-				mc.port1.onmessage = resolve;
-				mc.port2.postMessage(null);
-			});
-		}
-	}
-
-	async function drawGcode(lines: string[], delay = 0) {
+	async function drawGcode(lines: string[]) {
 		let x: number = 0;
 		let y: number = 0;
 		clear();
@@ -95,8 +106,6 @@
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
 				draw(x, y);
-
-				await preciseMessageDelay(delay);
 			}
 		}
 		stopDrawing();
@@ -207,10 +216,10 @@
 		>
 			<option value="" disabled selected>Patterns</option>
 			{#each patterns as pattern}
-				<option value="/patterns/{pattern}">{pattern}</option>
+				<option value="/patterns/{pattern}">{pattern.replace('.gcode', '')}</option>
 			{/each}
 		</select>
-		<button class="btn" onclick={() => drawGcode(lines, 1)} aria-label="preview">
+		<button class="btn" onclick={() => previewPattern()} aria-label="preview">
 			<i class="fa-solid fa-eye"></i>
 		</button>
 		<button class="btn" onclick={() => sendPatternFragments(pointNums)}>
