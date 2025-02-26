@@ -1,4 +1,4 @@
-import { socketState } from './stores';
+import { espConnected, machinePatterns, MachineState, machineStats, socketState } from './stores';
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -12,7 +12,12 @@ export enum WSCmdType_t {
 	WSCmdType_GCODE_START = 0x08, // Start G-code command
 	WSCmdType_GCODE = 0x09, // G-code command
 	WSCmdType_GCODE_FIN = 0x0a, // End G-code command
-	WSCmdType_FAN = 0x0b // Fan speed
+	WSCmdType_FAN = 0x0b, // Fan speed
+	WSCmdType_STAT = 0x0c, // Statisctics request/data
+	WSCmdType_START = 0x0d, // Start command
+	WSCmdType_FILE_NAMES = 0x0e, // Uploaded pattern files
+	WSCmdType_ESP_STATE = 0x0f,
+	WSCmdType_SAFEMODE = 0x10
 }
 
 export let ws: WebSocket;
@@ -23,6 +28,7 @@ export async function waitForAck() {
 		ackResolve = resolve;
 	});
 }
+
 function handleBinaryMessage(data: any) {
 	const dataView = new DataView(data);
 	if (dataView.byteLength == 0) return;
@@ -33,26 +39,41 @@ function handleBinaryMessage(data: any) {
 		case WSCmdType_t.WSCmdType_ACK:
 			ackResolve();
 			break;
-	}
-
-	for (let i = 0; i < dataView.byteLength; i++) {
-		const byte = dataView.getUint8(i); // Read 1 byte at a time
-		console.log(`Byte ${i}: ${byte}`);
+		case WSCmdType_t.WSCmdType_STAT:
+			console.log('Stats received');
+			machineStats.set({
+				x: dataView.getUint16(1) / 100.0,
+				y: dataView.getUint16(3) / 100.0,
+				feedrate: dataView.getUint16(5),
+				homed: dataView.getUint8(7) != 0,
+				state: dataView.getUint8(8) as MachineState,
+				led: dataView.getUint8(9),
+				fan: dataView.getUint8(10),
+				safemode: dataView.getUint8(11) != 0
+			});
+			break;
+		case WSCmdType_t.WSCmdType_FILE_NAMES:
+			const charArray = new Uint8Array(dataView.buffer);
+			machinePatterns.set(String.fromCharCode(...charArray.slice(1)).split(','));
+			break;
+		case WSCmdType_t.WSCmdType_ESP_STATE:
+			espConnected.set(dataView.getUint8(1));
+			break;
 	}
 }
 
-export function openSocket() {
-	ws = new WebSocket('wss://sandtable-websocket.onrender.com', 'webapp');
+export function openSocket(websocket_password: string) {
+	ws = new WebSocket('wss://sandtable-websocket.onrender.com', ['webapp', websocket_password]);
 	ws.binaryType = 'arraybuffer';
 	socketState.set(ws.readyState);
 
 	ws.onopen = () => {
-		console.log('Connected to the server');
 		socketState.set(ws.readyState);
+		console.log('Connected: Requesting machine stats');
+		sendStatRequest();
 	};
 
 	ws.onmessage = (message) => {
-		console.log('Message received');
 		handleBinaryMessage(message.data);
 	};
 
@@ -74,9 +95,95 @@ export function closeSocket() {
 	}
 }
 
-export function sendTextMessage(...args: any[]) {
-	const message = args.join(' ');
-	if (ws.readyState == ws.OPEN && message) {
-		ws.send(message);
+export function sendFanValue(value: number) {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_FAN, value]));
+}
+
+export function sendLedValue(value: number) {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LED, value]));
+}
+
+export function sendStart() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_START]));
+}
+
+export function sendPause() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_PAUSE]));
+}
+
+export function sendResume() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_RESUME]));
+}
+
+export function sendStop() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STOP]));
+}
+
+export function sendSafemode(safemode: boolean) {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_SAFEMODE, safemode ? 1 : 0]));
+}
+
+export function sendStatRequest() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STAT]));
+}
+
+export function sendFeedrateValue(value: number) {
+	let buffer = new ArrayBuffer(3);
+	let view = new DataView(buffer);
+	view.setUint8(0, WSCmdType_t.WSCmdType_FEEDRATE);
+	view.setUint16(1, value);
+	ws.send(new Uint8Array(buffer));
+}
+
+function scaleNum(num: number) {
+	return Math.round(num * 100);
+}
+
+export async function sendPatternFragments(
+	pointNums: number[],
+	name = 'pattern',
+	coordinatePairs: number = 512
+) {
+	if (ws.readyState != ws.OPEN) return;
+
+	let filePath = '/' + name.replace('.gcode', '') + '.bin';
+
+	let buffer = new ArrayBuffer(5 + filePath.length + 1);
+	let dataView = new DataView(buffer);
+	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE_START);
+	dataView.setUint32(1, pointNums.length * 2);
+	for (let i = 0; i < filePath.length; i++) dataView.setUint8(5 + i, filePath.charCodeAt(i));
+	dataView.setUint8(5 + filePath.length, 0x00);
+
+	ws.send(new Uint8Array(buffer));
+	await waitForAck();
+
+	let nums = coordinatePairs * 2;
+	buffer = new ArrayBuffer(1 + 2 * nums); // 1byte command + 2byte numbers
+	dataView = new DataView(buffer);
+	let offset = 0;
+	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
+
+	while (offset <= pointNums.length - nums) {
+		for (let i = 0; i < nums; i++) {
+			dataView.setUint16(1 + i * 2, scaleNum(pointNums[offset + i]));
+		}
+		ws.send(dataView.buffer);
+		await waitForAck();
+
+		offset += nums;
+		console.log('packet sent');
 	}
+	if (offset < pointNums.length) {
+		let len = pointNums.length - offset;
+		for (let i = 0; i < len; i++) {
+			dataView.setUint16(1 + i * 2, scaleNum(pointNums[offset + i]));
+		}
+		let sliced = dataView.buffer.slice(0, len * 2);
+		ws.send(sliced);
+		await waitForAck();
+		console.log('last packet sent');
+	}
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
+	await waitForAck();
 }
