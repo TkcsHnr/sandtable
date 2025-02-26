@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
-	import { waitForAck, ws, WSCmdType_t } from './websocket';
+	import { sendPatternFragments } from './websocket';
+	import { MachineState, machineStats } from './stores';
 	const { amber, orange, yellow } = colors;
 
 	let pointNums: number[] = [];
@@ -21,10 +22,8 @@
 		return pointNums;
 	}
 
-	function startDrawing(x: number, y: number) {
+	function startDrawing() {
 		drawing = true;
-		pointNums.push(x, y);
-		draw(x, y);
 	}
 
 	function draw(x: number, y: number) {
@@ -32,7 +31,9 @@
 		if (!drawing) return;
 
 		ctx.beginPath();
-		ctx.moveTo(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1]);
+		if (pointNums.length > 0)
+			ctx.moveTo(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1]);
+		else ctx.moveTo(x, y);
 
 		ctx.strokeStyle = orange[300];
 		ctx.lineWidth = 6;
@@ -69,11 +70,21 @@
 		return tokens;
 	}
 
-	function drawGcode(lines: string[]) {
+	async function preciseMessageDelay(iterations = 1) {
+		for (let i = 0; i < iterations; i++) {
+			await new Promise((resolve) => {
+				const mc = new MessageChannel();
+				mc.port1.onmessage = resolve;
+				mc.port2.postMessage(null);
+			});
+		}
+	}
+
+	async function drawGcode(lines: string[], delay = 0) {
 		let x: number = 0;
 		let y: number = 0;
 		clear();
-		startDrawing(x, y);
+		startDrawing();
 		for (let line of lines) {
 			line.trim();
 			if (line.startsWith(';') || line == '') continue;
@@ -84,12 +95,15 @@
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
 				draw(x, y);
+
+				await preciseMessageDelay(delay);
 			}
 		}
 		stopDrawing();
 	}
 
 	let patternSelector: HTMLSelectElement;
+	let lines: string[] = [];
 	async function handlePatternChange(event: any) {
 		const selectedPath = event.target.value;
 		if (!selectedPath) return;
@@ -98,7 +112,7 @@
 			const response = await fetch(selectedPath);
 			if (response.ok) {
 				const content = await response.text();
-				const lines = content.split('\n');
+				lines = content.split('\n');
 				drawGcode(lines);
 			}
 		} catch (error) {
@@ -113,7 +127,7 @@
 		const reader = new FileReader();
 		reader.onloadend = () => {
 			if (reader.result) {
-				const lines = reader.result.toString().split('\n');
+				lines = reader.result.toString().split('\n');
 				drawGcode(lines);
 			}
 		};
@@ -143,44 +157,6 @@
 		return [x, invertedY];
 	}
 
-	function scaleNum(num: number) {
-		return Math.round(num * 100)
-	}
-
-	async function sendDataFragments(coordinatePairs: number = 256) {
-		if (ws.readyState == ws.OPEN) {
-			ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_START]));
-			console.log("Waiting for acknowledgement...");
-			await waitForAck();
-			console.log("Carry on!");
-
-			let nums = coordinatePairs * 2;
-			let buffer = new ArrayBuffer(1 + (2 * nums)); // 1byte command + 2byte numbers
-			let dataView = new DataView(buffer);
-			let offset = 0;
-			dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
-			while(offset <= pointNums.length - nums) {
-				for(let i = 0; i < nums; i++) {
-					dataView.setUint16(1 + i*2, scaleNum(pointNums[offset + i]));
-				}
-				ws.send(dataView.buffer);
-				await waitForAck();
-				offset += 2*nums;
-			}
-			if(offset < pointNums.length) {
-				let len = pointNums.length - offset;
-				for(let i = 0; i < len; i++) {
-					dataView.setUint16(1 + i*2, scaleNum(pointNums[offset + i]));
-				}
-				let sliced = dataView.buffer.slice(0, len*2);
-				ws.send(sliced);
-				await waitForAck();
-			}
-			ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
-			await waitForAck();
-		}
-	}
-
 	onMount(() => {
 		ctx = canvas.getContext('2d');
 		if (ctx) {
@@ -190,12 +166,24 @@
 			ctx.scale(1, -1);
 		}
 	});
+
+	machineStats.subscribe(($machineStats) => {
+		if (!ctx) return;
+		if ($machineStats.state != MachineState.BUSY) return;
+
+		ctx.moveTo($machineStats.x, $machineStats.y);
+		ctx.arc($machineStats.x, $machineStats.y, 3, 0, Math.PI * 2);
+		ctx.fillStyle = 'red';
+		ctx.strokeStyle = 'orange';
+		ctx.stroke();
+		ctx.fill();
+	});
 </script>
 
-<div class="flex flex-col items-center">
+<div class="flex flex-col items-center relative">
 	<div class="flex gap-2 justify-center bg-neutral p-4 rounded-t-box w-full max-w-[490px]">
-		<button class="btn" onclick={clear}>
-			<span class="hidden sm:block">Clear</span>
+		<button class="btn" onclick={clear} aria-label="clear">
+			<!-- <span class="hidden sm:block">Clear</span> -->
 			<i class="fa-solid fa-eraser"></i>
 		</button>
 		<input
@@ -222,21 +210,25 @@
 				<option value="/patterns/{pattern}">{pattern}</option>
 			{/each}
 		</select>
-		<button class="btn" onclick={() => sendDataFragments()}>
+		<button class="btn" onclick={() => drawGcode(lines, 1)} aria-label="preview">
+			<i class="fa-solid fa-eye"></i>
+		</button>
+		<button class="btn" onclick={() => sendPatternFragments(pointNums)}>
 			<span class="hidden sm:block">Send</span>
 			<i class="fa-solid fa-paper-plane"></i>
 		</button>
 	</div>
 	<canvas
 		bind:this={canvas}
-		onmousedown={(e) => startDrawing(...getCanvasCoords(e))}
+		onmousedown={startDrawing}
 		onmousemove={(e) => draw(...getCanvasCoords(e))}
 		onmouseup={stopDrawing}
-		ontouchstart={(e) => startDrawing(...getCanvasCoords(e))}
+		ontouchstart={startDrawing}
 		ontouchmove={(e) => draw(...getCanvasCoords(e))}
 		ontouchend={stopDrawing}
 		width="490"
 		height="490"
-		class="touch-none bg-yellow-100 max-w-[490px] w-full"
-	></canvas>
+		class="touch-none bg-orange-100 max-w-[490px] w-full"
+	>
+	</canvas>
 </div>
