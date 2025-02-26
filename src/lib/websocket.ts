@@ -17,7 +17,8 @@ export enum WSCmdType_t {
 	WSCmdType_START = 0x0d, // Start command
 	WSCmdType_FILE_NAMES = 0x0e, // Uploaded pattern files
 	WSCmdType_ESP_STATE = 0x0f,
-	WSCmdType_SAFEMODE = 0x10
+	WSCmdType_SAFEMODE = 0x10,
+	WSCmdType_DELETE_FILE = 0x11
 }
 
 export let ws: WebSocket;
@@ -57,7 +58,7 @@ function handleBinaryMessage(data: any) {
 			machinePatterns.set(String.fromCharCode(...charArray.slice(1)).split(','));
 			break;
 		case WSCmdType_t.WSCmdType_ESP_STATE:
-			espConnected.set(dataView.getUint8(1));
+			espConnected.set(dataView.getUint8(1) > 0);
 			break;
 	}
 }
@@ -103,8 +104,9 @@ export function sendLedValue(value: number) {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LED, value]));
 }
 
-export function sendStart() {
-	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_START]));
+export function sendStart(pattern: string) {
+	const charArray = new TextEncoder().encode(pattern);
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_START, ...charArray, 0x00]));
 }
 
 export function sendPause() {
@@ -119,6 +121,17 @@ export function sendStop() {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STOP]));
 }
 
+export function sendHome() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_HOME]));
+}
+export function sendMove(dx: number, dy: number) {
+	let view = new DataView(new ArrayBuffer(5));
+	view.setUint8(0, WSCmdType_t.WSCmdType_MOVE);
+	view.setUint16(1, dx);
+	view.setUint16(3, dy);
+	ws.send(new Uint8Array(view.buffer));
+}
+
 export function sendSafemode(safemode: boolean) {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_SAFEMODE, safemode ? 1 : 0]));
 }
@@ -127,12 +140,16 @@ export function sendStatRequest() {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STAT]));
 }
 
+export function sendDeletePattern(pattern: string) {
+	const charArray = new TextEncoder().encode(pattern);
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_DELETE_FILE, ...charArray, 0x00]));
+}
+
 export function sendFeedrateValue(value: number) {
-	let buffer = new ArrayBuffer(3);
-	let view = new DataView(buffer);
+	let view = new DataView(new ArrayBuffer(3));
 	view.setUint8(0, WSCmdType_t.WSCmdType_FEEDRATE);
 	view.setUint16(1, value);
-	ws.send(new Uint8Array(buffer));
+	ws.send(new Uint8Array(view.buffer));
 }
 
 function scaleNum(num: number) {
@@ -146,21 +163,24 @@ export async function sendPatternFragments(
 ) {
 	if (ws.readyState != ws.OPEN) return;
 
-	let filePath = '/' + name.replace('.gcode', '') + '.bin';
+	const filePath = '/' + name.replace('.gcode', '') + '.bin';
+	const charArray = new TextEncoder().encode(filePath);
 
-	let buffer = new ArrayBuffer(5 + filePath.length + 1);
-	let dataView = new DataView(buffer);
+	let dataView = new DataView(new ArrayBuffer(5));
 	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE_START);
 	dataView.setUint32(1, pointNums.length * 2);
-	for (let i = 0; i < filePath.length; i++) dataView.setUint8(5 + i, filePath.charCodeAt(i));
-	dataView.setUint8(5 + filePath.length, 0x00);
 
-	ws.send(new Uint8Array(buffer));
+	ws.send(
+		new Uint8Array([
+			...new Uint8Array(dataView.buffer),
+			...charArray,
+			0x00
+		])
+	);
 	await waitForAck();
 
 	let nums = coordinatePairs * 2;
-	buffer = new ArrayBuffer(1 + 2 * nums); // 1byte command + 2byte numbers
-	dataView = new DataView(buffer);
+	dataView = new DataView(new ArrayBuffer(1 + 2 * nums)); // 1byte command + 2byte numbers
 	let offset = 0;
 	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
 
