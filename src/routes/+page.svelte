@@ -9,32 +9,29 @@
 	import FeedrateControl from '$lib/FeedrateControl.svelte';
 	import RunControl from '$lib/RunControl.svelte';
 	import FanControl from '$lib/FanControl.svelte';
+	import SafemodeButton from '$lib/SafemodeButton.svelte';
 
-	function handleMessage(data: string) {
-		const message = JSON.parse(data);
-		console.log(JSON.stringify(message));
-	}
+	export let data: PageData;
 
 	onMount(() => {
-		openSocket();
+		openSocket(data.websocket_password);
 	});
 	onDestroy(() => {
 		closeSocket();
 	});
-
-	export let data: PageData;
 </script>
 
-<main class="flex flex-col items-center p-8 gap-4">
-	<div class="flex gap-4 w-full flex-wrap justify-center items-center">
-		<MovementControl />
+<div class="flex gap-4 w-full flex-wrap justify-center items-center">
+	<MovementControl />
+	<div class="flex flex-col gap-1 items-center">
+		<SafemodeButton />
 		<RunControl />
-		<div class="flex flex-col gap-4 max-w-xs w-full">
-			<LedControl />
-			<FeedrateControl />
-			<FanControl />
-		</div>
 	</div>
-	<Stats />
-	<Canvas patterns={data.patterns} />
-</main>
+	<div class="flex flex-col gap-4 max-w-xs w-full">
+		<LedControl />
+		<FeedrateControl />
+		<FanControl />
+	</div>
+</div>
+<Stats />
+<Canvas patterns={data.patterns} />
