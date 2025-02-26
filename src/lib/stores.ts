@@ -23,5 +23,5 @@ const defaultMachineStats: MachineStats = {
 
 export const machinePatterns = writable<string[]>([]);
 export const socketState = writable<number>(3);
-export const espConnected = writable<number>(1);
+export const espConnected = writable<boolean>(false);
 export const machineStats = writable<MachineStats>(defaultMachineStats);
