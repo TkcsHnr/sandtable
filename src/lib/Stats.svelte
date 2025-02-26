@@ -8,10 +8,6 @@
 		2: { name: 'CLOSING', color: 'text-warning', icon: 'fa-triangle-exlamation' },
 		3: { name: 'CLOSED', color: 'text-error', icon: 'fa-link-slash' }
 	};
-	const espStates: socketStates = {
-		0: { name: 'NO', color: 'text-error', icon: 'fa-link-slash' },
-		1: { name: 'YES', color: 'text-success', icon: 'fa-link' }
-	};
 	const machineStates: { [state: number]: string } = {};
 	machineStates[MachineState.BUSY] = 'Busy';
 	machineStates[MachineState.IDLE] = 'Idle';
@@ -32,9 +28,10 @@
 	<div class="stats">
 		<div class="stat">
 			<div class="stat-title">ESP32</div>
-			<div class="stat-value {espStates[$espConnected].color} flex items-center gap-2">
-				{espStates[$espConnected].name}
-				<i class="fa-solid {espStates[$espConnected].icon}"></i>
+			<div
+				class="stat-value {$espConnected ? 'text-success' : 'text-error'} flex items-center gap-2"
+			>
+				<i class="fa-solid {$espConnected ? 'fa-link' : 'fa-link-slash'}"></i>
 			</div>
 		</div>
 	</div>
