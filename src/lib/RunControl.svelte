@@ -8,7 +8,7 @@
 		if(state == MachineState.BUSY) 
 			sendPause();
 		if(state == MachineState.IDLE)
-			sendStart();
+			sendStart("/pattern.bin");
 		if(state == MachineState.PAUSED)
 			sendResume();
 	}
@@ -19,6 +19,7 @@
 		class="btn btn-square"
 		aria-label={state == MachineState.BUSY ? 'Pause' : state == MachineState.IDLE ? 'Start' : 'Resume'}
 		onclick={startPauseToggleButton}
+		disabled={$machineStats.homed == false}
 	>
 		<i class="fa-solid {state == MachineState.BUSY ? 'fa-pause' : 'fa-play'}"></i>
 	</button>
