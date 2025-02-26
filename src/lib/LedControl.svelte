@@ -1,12 +1,6 @@
 <script lang="ts">
-	import { machineState } from './stores';
-	import { ws, WSCmdType_t } from './websocket';
-
-	let value = $machineState.led;
-
-	function sendLedValue() {
-		ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LED, value]));
-	}
+	import { machineStats } from './stores';
+	import { sendLedValue } from './websocket';
 </script>
 
 <div class="flex justify-center gap-2 items-center">
@@ -16,9 +10,11 @@
 		min="0"
 		max="255"
 		step="1"
-		bind:value
+		bind:value={$machineStats.led}
 		class="range range-sm"
-		on:change={sendLedValue}
+		on:input={() => sendLedValue($machineStats.led)}
 	/>
 	<i class="fa-solid fa-sun"></i>
+	<span class="badge min-w-14">{Math.round($machineStats.led * 100 / 255)}%</span>
+
 </div>

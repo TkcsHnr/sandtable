@@ -1,12 +1,7 @@
 <script lang="ts">
-	import { machineState } from './stores';
-	import { ws, WSCmdType_t } from './websocket';
+	import { machineStats } from './stores';
+	import { sendFanValue } from './websocket';
 
-	let value = $machineState.fan;
-
-	function sendFanValue() {
-		ws.send(new Uint8Array([WSCmdType_t.WSCmdType_FAN, value]));
-	}
 </script>
 
 <div class="flex justify-center gap-2 items-center">
@@ -16,9 +11,10 @@
 		min="0"
 		max="255"
 		step="1"
-		bind:value
+		bind:value={$machineStats.fan}
 		class="range range-sm"
-		on:change={sendFanValue}
+		on:input={() => sendFanValue($machineStats.fan)}
 	/>
 	<i class="fa-solid fa-fan"></i>
+	<span class="badge min-w-14">{Math.round($machineStats.fan * 100 / 255)}%</span>
 </div>
