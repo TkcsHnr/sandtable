@@ -10,6 +10,7 @@
 	import RunControl from '$lib/RunControl.svelte';
 	import FanControl from '$lib/FanControl.svelte';
 	import SafemodeButton from '$lib/SafemodeButton.svelte';
+	import Patterns from '$lib/Patterns.svelte';
 
 	export let data: PageData;
 
@@ -34,4 +35,7 @@
 	</div>
 </div>
 <Stats />
-<Canvas patterns={data.patterns} />
+<div class="flex gap-4">
+	<Canvas patterns={data.patterns} />
+	<Patterns />
+</div>

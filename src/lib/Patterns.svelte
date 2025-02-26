@@ -1,15 +1,6 @@
 <script lang="ts">
 	import { machinePatterns, machineStats } from './stores';
 	import { sendDeletePattern, sendStart } from './websocket.js';
-
-	$machinePatterns = [
-		'/giganiga.bin',
-		'/sevenhills.bin',
-		'/abrakadabra.bin',
-		'/avengers.bin',
-		'/chilliardobando.bin',
-		'/fuckthepolice.bin'
-	];
 </script>
 
 <div class="flex flex-col p-4 gap-4 rounded-box bg-base-200 h-fit">

@@ -125,10 +125,10 @@ export function sendHome() {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_HOME]));
 }
 export function sendMove(dx: number, dy: number) {
-	let view = new DataView(new ArrayBuffer(5));
+	let view = new DataView(new ArrayBuffer(3));
 	view.setUint8(0, WSCmdType_t.WSCmdType_MOVE);
-	view.setUint16(1, dx);
-	view.setUint16(3, dy);
+	view.setInt8(1, dx);
+	view.setInt8(2, dy);
 	ws.send(new Uint8Array(view.buffer));
 }
 
@@ -170,13 +170,7 @@ export async function sendPatternFragments(
 	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE_START);
 	dataView.setUint32(1, pointNums.length * 2);
 
-	ws.send(
-		new Uint8Array([
-			...new Uint8Array(dataView.buffer),
-			...charArray,
-			0x00
-		])
-	);
+	ws.send(new Uint8Array([...new Uint8Array(dataView.buffer), ...charArray, 0x00]));
 	await waitForAck();
 
 	let nums = coordinatePairs * 2;
