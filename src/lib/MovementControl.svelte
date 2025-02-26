@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { machineState } from '$lib/stores';
+	import { machineStats } from '$lib/stores';
 	import { ws, WSCmdType_t } from './websocket';
 
 	function home() {
@@ -10,9 +10,18 @@
 	}
 </script>
 
-<div class="grid grid-cols-3 grid-rows-3 gap-1 w-fit">
-	<button class="btn btn-square row-start-2 col-start-2" aria-label="home" onclick={home}>
-		<i class="fa-solid {$machineState.homed ? 'fa-house-circle-check' : 'fa-house'} text-lg"></i>
+<div class="grid grid-cols-3 grid-rows-3 gap-1 w-fit select-none">
+	<button
+		class="btn btn-square row-start-2 col-start-2 {$machineStats.homed ? '' : 'tooltip'}"
+		aria-label="home"
+		onclick={home}
+		data-tip="Press to home!"
+	>
+		<i
+			class="fa-solid {$machineStats.homed
+				? 'fa-house-circle-check'
+				: 'fa-house-circle-exclamation text-warning'} text-xl"
+		></i>
 	</button>
 	<button
 		class="btn rounded-t-badge row-start-1 col-start-2"
