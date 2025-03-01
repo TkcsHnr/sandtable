@@ -18,7 +18,7 @@ export enum MachineState {
     HOMING = 0x04
 }
 const defaultMachineStats: MachineStats = {
-    homed: false, x: 128, y: 420.5, state: MachineState.IDLE, led: 255, feedrate: 1000, fan: 0, safemode: true
+    homed: false, x: 0, y: 0, state: MachineState.IDLE, led: 255, feedrate: 1000, fan: 0, safemode: true
 }
 
 export const machinePatterns = writable<string[]>([]);

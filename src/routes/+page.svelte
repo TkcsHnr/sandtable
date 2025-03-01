@@ -35,7 +35,7 @@
 	</div>
 </div>
 <Stats />
-<div class="flex gap-4">
+<div class="flex gap-4 flex-wrap">
 	<Canvas patterns={data.patterns} />
 	<Patterns />
 </div>
