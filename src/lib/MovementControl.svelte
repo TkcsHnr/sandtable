@@ -9,8 +9,6 @@
 
 <div
 	class="grid grid-cols-3 grid-rows-3 gap-1 w-fit select-none tooltip-bottom lg:tooltip-left"
-	class:tooltip={!$machineStats.homed}
-	data-tip="Homing is needed!"
 >
 	<button
 		class="btn btn-square row-start-2 col-start-2"

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
 	import { sendPatternFragments } from './websocket';
-	import { MachineState, machineStats } from './stores';
+	import { MachineState, machineStats, sendingPattern } from './stores';
 	const { amber, orange, yellow } = colors;
 
 	let pointNums: number[] = [];
@@ -61,13 +61,13 @@
 			});
 		}
 	}
-	
+
 	async function previewPattern(delay = 1) {
 		let pointsCopy = structuredClone(pointNums);
 		clear();
 		startDrawing();
-		for(let i = 0; i < pointsCopy.length; i += 2) {
-			draw(pointsCopy[i], pointsCopy[i+1]);
+		for (let i = 0; i < pointsCopy.length; i += 2) {
+			draw(pointsCopy[i], pointsCopy[i + 1]);
 			await preciseMessageDelay(delay);
 		}
 		stopDrawing();
@@ -222,10 +222,16 @@
 		<button class="btn" onclick={() => previewPattern()} aria-label="preview">
 			<i class="fa-solid fa-eye"></i>
 		</button>
-		<button class="btn" onclick={() => sendPatternFragments(pointNums)}>
-			<span class="hidden sm:block">Send</span>
-			<i class="fa-solid fa-paper-plane"></i>
-		</button>
+		{#if $sendingPattern}
+			<button class="btn" aria-label="loading">
+				<span class="loading loading-spinner"></span>
+			</button>
+		{:else}
+			<button class="btn" onclick={() => sendPatternFragments(pointNums)}>
+				<span class="hidden sm:block">Send</span>
+				<i class="fa-solid fa-paper-plane"></i>
+			</button>
+		{/if}
 	</div>
 	<canvas
 		bind:this={canvas}

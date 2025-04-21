@@ -1,4 +1,4 @@
-import { espConnected, machinePatterns, MachineState, machineStats, socketState } from './stores';
+import { espConnected, machinePatterns, MachineState, machineStats, socketState, sendingPattern } from './stores';
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -55,7 +55,10 @@ function handleBinaryMessage(data: any) {
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
 			const charArray = new Uint8Array(dataView.buffer);
-			machinePatterns.set(String.fromCharCode(...charArray.slice(1)).split(','));
+			const fileNames = String.fromCharCode(...charArray.slice(1))
+				.split(',')
+				.filter((f) => f !== '');
+			machinePatterns.set(fileNames);
 			break;
 		case WSCmdType_t.WSCmdType_ESP_STATE:
 			espConnected.set(dataView.getUint8(1) > 0);
@@ -162,8 +165,10 @@ export async function sendPatternFragments(
 	coordinatePairs: number = 512
 ) {
 	if (ws.readyState != ws.OPEN) return;
+	sendingPattern.set(true);
 
 	const filePath = '/' + name.replace('.gcode', '') + '.bin';
+	console.log(filePath);
 	const charArray = new TextEncoder().encode(filePath);
 
 	let dataView = new DataView(new ArrayBuffer(5));
@@ -200,4 +205,5 @@ export async function sendPatternFragments(
 	}
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
 	await waitForAck();
+	sendingPattern.set(false);
 }
