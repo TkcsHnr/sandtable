@@ -1,4 +1,11 @@
-import { espConnected, machinePatterns, MachineState, machineStats, socketState, sendingPattern } from './stores';
+import {
+	espConnected,
+	machinePatterns,
+	MachineState,
+	machineStats,
+	socketState,
+	sendingPattern
+} from './stores';
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -55,9 +62,11 @@ function handleBinaryMessage(data: any) {
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
 			const charArray = new Uint8Array(dataView.buffer);
-			const fileNames = String.fromCharCode(...charArray.slice(1))
-				.split(',')
-				.filter((f) => f !== '');
+			const fileCount = dataView.getUint8(1);
+			let fileNames: string[] = [];
+			if (fileCount > 0) {
+				fileNames = String.fromCharCode(...charArray.slice(2)).split(',');
+			}
 			machinePatterns.set(fileNames);
 			break;
 		case WSCmdType_t.WSCmdType_ESP_STATE:
