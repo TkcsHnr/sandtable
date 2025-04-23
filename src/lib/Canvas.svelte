@@ -13,9 +13,17 @@
 
 	export let patterns: string[];
 
+	let patternName = 'pattern';
 	export function clear() {
+		stopDrawing();
 		pointNums = [];
 		ctx?.clearRect(0, 0, canvas.width, canvas.height);
+	}
+
+	function reset() {
+		clear();
+		patternSelector.selectedIndex = 0;
+		patternName = 'pattern';
 	}
 
 	export function getpointNums() {
@@ -50,6 +58,7 @@
 
 	function stopDrawing() {
 		drawing = false;
+		preview = false;
 	}
 
 	async function preciseMessageDelay(iterations = 1) {
@@ -62,11 +71,16 @@
 		}
 	}
 
+	let preview = false;
 	async function previewPattern(delay = 1) {
 		let pointsCopy = structuredClone(pointNums);
 		clear();
 		startDrawing();
+		preview = true;
 		for (let i = 0; i < pointsCopy.length; i += 2) {
+			if (!drawing) {
+				return;
+			}
 			draw(pointsCopy[i], pointsCopy[i + 1]);
 			await preciseMessageDelay(delay);
 		}
@@ -115,10 +129,11 @@
 	let lines: string[] = [];
 	async function handlePatternChange(event: any) {
 		const selectedPath = event.target.value;
+		patternName = selectedPath;
 		if (!selectedPath) return;
 
 		try {
-			const response = await fetch(selectedPath);
+			const response = await fetch(`/patterns/${selectedPath}`);
 			if (response.ok) {
 				const content = await response.text();
 				lines = content.split('\n');
@@ -188,10 +203,9 @@
 		ctx.fill();
 	});
 </script>
-
 <div class="flex flex-col items-center relative">
 	<div class="flex gap-2 justify-center bg-neutral p-4 rounded-t-box w-full max-w-[490px]">
-		<button class="btn" onclick={clear} aria-label="clear">
+		<button class="btn" onclick={reset} aria-label="clear">
 			<!-- <span class="hidden sm:block">Clear</span> -->
 			<i class="fa-solid fa-eraser"></i>
 		</button>
@@ -216,7 +230,7 @@
 		>
 			<option value="" disabled selected>Patterns</option>
 			{#each patterns as pattern}
-				<option value="/patterns/{pattern}">{pattern.replace('.gcode', '')}</option>
+				<option value={pattern}>{pattern.replace('.gcode', '')}</option>
 			{/each}
 		</select>
 		<button class="btn" onclick={() => previewPattern()} aria-label="preview">
@@ -227,7 +241,11 @@
 				<span class="loading loading-spinner"></span>
 			</button>
 		{:else}
-			<button class="btn" onclick={() => sendPatternFragments(pointNums)}>
+			<button
+				class="btn"
+				onclick={() => sendPatternFragments(pointNums, patternName)}
+				disabled={patternName == ''}
+			>
 				<span class="hidden sm:block">Send</span>
 				<i class="fa-solid fa-paper-plane"></i>
 			</button>
@@ -243,7 +261,7 @@
 		ontouchend={stopDrawing}
 		width="490"
 		height="490"
-		class="touch-none bg-orange-100 max-w-[490px] w-full"
+		class="touch-none bg-orange-100 max-w-[490px] w-full {preview ? 'pointer-events-none' : ''}"
 	>
 	</canvas>
 </div>

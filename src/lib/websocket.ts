@@ -25,7 +25,8 @@ export enum WSCmdType_t {
 	WSCmdType_FILE_NAMES = 0x0e, // Uploaded pattern files
 	WSCmdType_ESP_STATE = 0x0f,
 	WSCmdType_SAFEMODE = 0x10,
-	WSCmdType_DELETE_FILE = 0x11
+	WSCmdType_DELETE_FILE = 0x11,
+	WSCmdType_LOG_LEVEL = 0x12
 }
 
 export let ws: WebSocket;
@@ -57,15 +58,18 @@ function handleBinaryMessage(data: any) {
 				state: dataView.getUint8(8) as MachineState,
 				led: dataView.getUint8(9),
 				fan: dataView.getUint8(10),
-				safemode: dataView.getUint8(11) != 0
+				safemode: dataView.getUint8(11) != 0,
+				logEnabled: dataView.getUint8(12) != 0
 			});
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
-			const charArray = new Uint8Array(dataView.buffer);
+			console.log('Filenames received');
 			const fileCount = dataView.getUint8(1);
+			const charArray = new Uint8Array(dataView.buffer);
 			let fileNames: string[] = [];
 			if (fileCount > 0) {
-				fileNames = String.fromCharCode(...charArray.slice(2)).split(',');
+				const decoder = new TextDecoder('utf-8');
+				fileNames = decoder.decode(charArray.slice(2, charArray.length - 1)).split(',');
 			}
 			machinePatterns.set(fileNames);
 			break;
@@ -82,8 +86,9 @@ export function openSocket(websocket_password: string) {
 
 	ws.onopen = () => {
 		socketState.set(ws.readyState);
-		console.log('Connected: Requesting machine stats');
+		console.log('Connected: Requesting stats and files');
 		sendStatRequest();
+		sendFilenamesRequest();
 	};
 
 	ws.onmessage = (message) => {
@@ -152,6 +157,10 @@ export function sendStatRequest() {
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STAT]));
 }
 
+export function sendFilenamesRequest() {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_FILE_NAMES]));
+}
+
 export function sendDeletePattern(pattern: string) {
 	const charArray = new TextEncoder().encode(pattern);
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_DELETE_FILE, ...charArray, 0x00]));
@@ -176,7 +185,9 @@ export async function sendPatternFragments(
 	if (ws.readyState != ws.OPEN) return;
 	sendingPattern.set(true);
 
-	const filePath = '/' + name.replace('.gcode', '') + '.bin';
+	console.log("fasz");
+
+	const filePath = name.replace('.gcode', '') + '.bin';
 	console.log(filePath);
 	const charArray = new TextEncoder().encode(filePath);
 
@@ -215,4 +226,8 @@ export async function sendPatternFragments(
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
 	await waitForAck();
 	sendingPattern.set(false);
+}
+
+export function sendLogLevel(level: number) {
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LOG_LEVEL, level]));
 }

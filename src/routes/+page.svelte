@@ -11,6 +11,7 @@
 	import FanControl from '$lib/FanControl.svelte';
 	import SafemodeButton from '$lib/SafemodeButton.svelte';
 	import Patterns from '$lib/Patterns.svelte';
+	import LogLevelButton from '$lib/LogLevelButton.svelte';
 
 	export let data: PageData;
 
@@ -33,6 +34,7 @@
 		<FeedrateControl />
 		<FanControl />
 	</div>
+	<LogLevelButton />
 </div>
 <Stats />
 <div class="flex gap-4 flex-wrap">

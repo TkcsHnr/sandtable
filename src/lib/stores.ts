@@ -1,25 +1,33 @@
-import { writable } from "svelte/store";
-
+import { writable } from 'svelte/store';
 
 type MachineStats = {
-    x: number,
-    y: number,
-    feedrate: number,
-    homed: boolean,
-    state: MachineState
-    led: number,
-    fan: number,
-    safemode: boolean,
-}
+	x: number;
+	y: number;
+	feedrate: number;
+	homed: boolean;
+	state: MachineState;
+	led: number;
+	fan: number;
+	safemode: boolean;
+	logEnabled: boolean;
+};
 export enum MachineState {
 	IDLE = 0x01,
 	PAUSED = 0x02,
 	BUSY = 0x03,
-    HOMING = 0x04
+	HOMING = 0x04
 }
 const defaultMachineStats: MachineStats = {
-    homed: false, x: 0, y: 0, state: MachineState.IDLE, led: 255, feedrate: 1000, fan: 0, safemode: true
-}
+	homed: false,
+	x: 0,
+	y: 0,
+	state: MachineState.IDLE,
+	led: 255,
+	feedrate: 1000,
+	fan: 0,
+	safemode: true,
+    logEnabled: true
+};
 
 export const machinePatterns = writable<string[]>([]);
 export const socketState = writable<number>(3);

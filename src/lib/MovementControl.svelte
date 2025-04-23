@@ -1,25 +1,30 @@
 <script lang="ts">
-	import { machineStats } from '$lib/stores';
+	import { MachineState, machineStats } from '$lib/stores';
 	import { sendHome, sendMove } from './websocket';
 
-	$: disabled = !$machineStats.homed && $machineStats.safemode;
+	$: disabled =
+		$machineStats.state == MachineState.HOMING ||
+		(!$machineStats.homed && $machineStats.safemode);
 
 	let unit = 10;
 </script>
 
-<div
-	class="grid grid-cols-3 grid-rows-3 gap-1 w-fit select-none tooltip-bottom lg:tooltip-left"
->
+<div class="grid grid-cols-3 grid-rows-3 gap-1 w-fit select-none tooltip-bottom lg:tooltip-left">
 	<button
 		class="btn btn-square row-start-2 col-start-2"
 		aria-label="home"
 		onclick={() => sendHome()}
+		disabled={$machineStats.state == MachineState.BUSY}
 	>
-		<i
-			class="fa-solid {$machineStats.homed
-				? 'fa-house-circle-check'
-				: 'fa-house-circle-exclamation text-warning'} text-xl"
-		></i>
+		{#if $machineStats.state == MachineState.HOMING}
+			<span class="loading loading-spinner"></span>
+		{:else}
+			<i
+				class="fa-solid {$machineStats.homed
+					? 'fa-house-circle-check'
+					: 'fa-house-circle-exclamation text-warning'} text-xl"
+			></i>
+		{/if}
 	</button>
 	<button
 		class="btn rounded-t-badge row-start-1 col-start-2"

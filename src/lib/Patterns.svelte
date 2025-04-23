@@ -1,6 +1,11 @@
 <script lang="ts">
-	import { machinePatterns, machineStats } from './stores';
+	import { machinePatterns, MachineState, machineStats } from './stores';
 	import { sendDeletePattern, sendStart } from './websocket.js';
+
+	$: disabled =
+		$machineStats.state == MachineState.BUSY ||
+		$machineStats.state == MachineState.HOMING ||
+		(!$machineStats.homed && $machineStats.safemode);
 </script>
 
 {#if $machinePatterns.length > 0}
@@ -12,7 +17,7 @@
 					class="btn btn-sm btn-square btn-ghost"
 					aria-label="start"
 					onclick={() => sendStart(pattern)}
-					disabled={!$machineStats.homed}
+					{disabled}
 				>
 					<i class="fa-solid fa-play"></i>
 				</button>

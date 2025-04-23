@@ -7,19 +7,18 @@
 	function startPauseToggleButton() {
 		if(state == MachineState.BUSY) 
 			sendPause();
-		if(state == MachineState.IDLE)
-			sendStart("/pattern.bin");
-		if(state == MachineState.PAUSED)
+		else if(state == MachineState.PAUSED)
 			sendResume();
 	}
+
 </script>
 
 <div class="flex flex-col gap-1">
 	<button
 		class="btn btn-square"
-		aria-label={state == MachineState.BUSY ? 'Pause' : state == MachineState.IDLE ? 'Start' : 'Resume'}
+		aria-label={state == MachineState.BUSY ? 'Pause' : 'Resume'}
 		onclick={startPauseToggleButton}
-		disabled={$machineStats.homed == false}
+		disabled={$machineStats.state == MachineState.IDLE || $machineStats.state == MachineState.HOMING}
 	>
 		<i class="fa-solid {state == MachineState.BUSY ? 'fa-pause' : 'fa-play'}"></i>
 	</button>
