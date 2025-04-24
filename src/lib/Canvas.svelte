@@ -203,6 +203,7 @@
 		ctx.fill();
 	});
 </script>
+
 <div class="flex flex-col items-center relative">
 	<div class="flex gap-2 justify-center bg-neutral p-4 rounded-t-box w-full max-w-[490px]">
 		<button class="btn" onclick={reset} aria-label="clear">

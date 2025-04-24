@@ -6,6 +6,7 @@ import {
 	socketState,
 	sendingPattern
 } from './stores';
+import CRC32 from 'crc-32';
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -49,7 +50,6 @@ function handleBinaryMessage(data: any) {
 			ackResolve();
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
-			console.log('Stats received');
 			machineStats.set({
 				x: dataView.getUint16(1) / 100.0,
 				y: dataView.getUint16(3) / 100.0,
@@ -63,7 +63,6 @@ function handleBinaryMessage(data: any) {
 			});
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
-			console.log('Filenames received');
 			const fileCount = dataView.getUint8(1);
 			const charArray = new Uint8Array(dataView.buffer);
 			let fileNames: string[] = [];
@@ -174,7 +173,18 @@ export function sendFeedrateValue(value: number) {
 }
 
 function scaleNum(num: number) {
-	return Math.round(num * 100);
+	return Math.round(num * 100) & 0xffff;
+}
+
+async function sendPacket(offset: number, nums: number, pointNums: number[]) {
+	let dataView = new DataView(new ArrayBuffer(1 + 2 * nums)); // 1byte command + 2byte numbers
+	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
+	for (let i = 0; i < nums; i++) {
+		dataView.setUint16(1 + i * 2, scaleNum(pointNums[offset + i]));
+	}
+	ws.send(dataView.buffer);
+	await waitForAck();
+	console.log(dataView.buffer.byteLength, "bytes sent");
 }
 
 export async function sendPatternFragments(
@@ -185,44 +195,26 @@ export async function sendPatternFragments(
 	if (ws.readyState != ws.OPEN) return;
 	sendingPattern.set(true);
 
-	console.log("fasz");
-
 	const filePath = name.replace('.gcode', '') + '.bin';
-	console.log(filePath);
 	const charArray = new TextEncoder().encode(filePath);
 
 	let dataView = new DataView(new ArrayBuffer(5));
 	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE_START);
 	dataView.setUint32(1, pointNums.length * 2);
-
 	ws.send(new Uint8Array([...new Uint8Array(dataView.buffer), ...charArray, 0x00]));
 	await waitForAck();
 
-	let nums = coordinatePairs * 2;
-	dataView = new DataView(new ArrayBuffer(1 + 2 * nums)); // 1byte command + 2byte numbers
+	let nums = coordinatePairs * 2;	
 	let offset = 0;
-	dataView.setUint8(0, WSCmdType_t.WSCmdType_GCODE);
-
 	while (offset <= pointNums.length - nums) {
-		for (let i = 0; i < nums; i++) {
-			dataView.setUint16(1 + i * 2, scaleNum(pointNums[offset + i]));
-		}
-		ws.send(dataView.buffer);
-		await waitForAck();
-
+		await sendPacket(offset, nums, pointNums);
 		offset += nums;
-		console.log('packet sent');
 	}
 	if (offset < pointNums.length) {
 		let len = pointNums.length - offset;
-		for (let i = 0; i < len; i++) {
-			dataView.setUint16(1 + i * 2, scaleNum(pointNums[offset + i]));
-		}
-		let sliced = dataView.buffer.slice(0, len * 2);
-		ws.send(sliced);
-		await waitForAck();
-		console.log('last packet sent');
+		await sendPacket(offset, len, pointNums);
 	}
+
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_GCODE_FIN]));
 	await waitForAck();
 	sendingPattern.set(false);

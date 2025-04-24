@@ -35,6 +35,7 @@
 		"@types/tailwindcss": "^3.0.11",
 		"b-spline": "^2.0.2",
 		"cat-rom-spline": "^1.0.0",
+		"crc-32": "^1.2.2",
 		"daisyui": "^4.12.23",
 		"pusher": "^5.2.0",
 		"typescript-cubic-spline": "^1.0.1"
