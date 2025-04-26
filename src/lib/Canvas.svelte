@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
 	import { sendPatternFragments } from './websocket';
-	import { MachineState, machineStats, sendingPattern } from './stores';
+	import { currentFile, machineStats, sendingPattern } from './stores';
 	const { amber, orange, yellow } = colors;
 
 	let pointNums: number[] = [];
@@ -127,20 +127,19 @@
 
 	let patternSelector: HTMLSelectElement;
 	let lines: string[] = [];
-	async function handlePatternChange(event: any) {
-		const selectedPath = event.target.value;
-		patternName = selectedPath;
-		if (!selectedPath) return;
+	async function handlePatternChange() {
+		patternName = patternSelector.value;
+		if (!patternName) return;
 
 		try {
-			const response = await fetch(`/patterns/${selectedPath}`);
+			const response = await fetch(`/patterns/${patternName}`);
 			if (response.ok) {
 				const content = await response.text();
 				lines = content.split('\n');
 				drawGcode(lines);
 			}
 		} catch (error) {
-			console.error("Coudln't fetch pattern from files.");
+			console.error("Couldn't fetch pattern from files.");
 		}
 	}
 
@@ -191,16 +190,28 @@
 		}
 	});
 
+	let prevX: number, prevY: number;
 	machineStats.subscribe(($machineStats) => {
 		if (!ctx) return;
-		if ($machineStats.state != MachineState.BUSY) return;
+		if ($machineStats.homing || !$machineStats.busy) return;
 
-		ctx.moveTo($machineStats.x, $machineStats.y);
-		ctx.arc($machineStats.x, $machineStats.y, 3, 0, Math.PI * 2);
-		ctx.fillStyle = 'red';
+		ctx.moveTo(prevX || $machineStats.x, prevY || $machineStats.y);
+		ctx.lineTo($machineStats.x, $machineStats.y);
+		ctx.lineWidth = 8;
 		ctx.strokeStyle = 'orange';
 		ctx.stroke();
-		ctx.fill();
+		ctx.lineWidth = 4;
+		ctx.strokeStyle = 'red';
+		ctx.stroke();
+
+		prevX = $machineStats.x;
+		prevY = $machineStats.y;
+	});
+
+	currentFile.subscribe(($currentFile) => {
+		if (patternSelector == null) return;
+		patternSelector.value = $currentFile.replace('.bin', '.gcode');
+		handlePatternChange();
 	});
 </script>
 
@@ -224,7 +235,7 @@
 		<select
 			bind:this={patternSelector}
 			class="select select-bordered min-w-0 w-full bg-base-200 border-none"
-			onchange={handlePatternChange}
+			onchange={() => handlePatternChange()}
 			onfocus={() => {
 				patternSelector.selectedIndex = 0;
 			}}

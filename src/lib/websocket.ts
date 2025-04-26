@@ -1,11 +1,22 @@
 import {
 	espConnected,
 	machinePatterns,
-	MachineState,
 	machineStats,
 	socketState,
-	sendingPattern
+	sendingPattern,
+	currentFile
 } from './stores';
+
+
+enum BoolMask {
+	BUSY = 0x80,
+	EXECUTING = 0x40,
+	HOMING = 0x20,
+	YHOMED = 0x10,
+	HOMED = 0x08,
+	SAFEMODE = 0x04,
+	LOG_ENABLED = 0x02
+}
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -27,7 +38,8 @@ export enum WSCmdType_t {
 	WSCmdType_SAFEMODE = 0x10,
 	WSCmdType_DELETE_FILE = 0x11,
 	WSCmdType_LOG_LEVEL = 0x12,
-	WSCmdType_POSITION = 0x13
+	WSCmdType_POSITION = 0x13,
+	WSCmdType_CURRENT_FILE = 0x14
 }
 
 export let ws: WebSocket;
@@ -45,6 +57,8 @@ function handleBinaryMessage(data: any) {
 
 	const cmdByte = dataView.getUint8(0);
 
+	let decoder: TextDecoder;
+	let charArray: Uint8Array;
 	switch (cmdByte as WSCmdType_t) {
 		case WSCmdType_t.WSCmdType_ACK:
 			ackResolve();
@@ -57,32 +71,55 @@ function handleBinaryMessage(data: any) {
 			}));
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
+			let bools = dataView.getUint8(1);
+
 			machineStats.set({
-				x: dataView.getUint16(1) / 100.0,
-				y: dataView.getUint16(3) / 100.0,
-				feedrate: dataView.getUint16(5),
-				homed: dataView.getUint8(7) != 0,
-				state: dataView.getUint8(8) as MachineState,
-				led: dataView.getUint8(9),
-				fan: dataView.getUint8(10),
-				safemode: dataView.getUint8(11) != 0,
-				logEnabled: dataView.getUint8(12) != 0
+				x: dataView.getUint16(2) / 100.0,
+				y: dataView.getUint16(4) / 100.0,
+				feedrate: dataView.getUint16(6),				
+				led: dataView.getUint8(8),
+				fan: dataView.getUint8(9),
+				busy: Boolean(bools & BoolMask.BUSY),
+				executing: Boolean(bools & BoolMask.EXECUTING),
+				homing: Boolean(bools & BoolMask.HOMING),
+				yHomed: Boolean(bools & BoolMask.YHOMED),
+				homed: Boolean(bools & BoolMask.HOMED),
+				safemode: Boolean(BoolMask.SAFEMODE)
 			});
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
 			const fileCount = dataView.getUint8(1);
-			const charArray = new Uint8Array(dataView.buffer);
+			charArray = new Uint8Array(dataView.buffer);
 			let fileNames: string[] = [];
 			if (fileCount > 0) {
-				const decoder = new TextDecoder('utf-8');
+				decoder = new TextDecoder('utf-8');
 				fileNames = decoder.decode(charArray.slice(2, charArray.length - 1)).split(',');
 			}
 			machinePatterns.set(fileNames);
+			break;
+		case WSCmdType_t.WSCmdType_CURRENT_FILE:
+			charArray = new Uint8Array(dataView.buffer);
+			decoder = new TextDecoder('utf-8');
+			currentFile.set(decoder.decode(charArray.slice(1, charArray.length - 1)));
 			break;
 		case WSCmdType_t.WSCmdType_ESP_STATE:
 			espConnected.set(dataView.getUint8(1) > 0);
 			break;
 	}
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+let reconnecting = false;
+async function reconnect(websocket_password: string) {
+	if(reconnecting) return;
+	reconnecting = true;
+	while (!ws || ws.readyState != WebSocket.OPEN) {
+		console.log('reconnecting to websocket');
+		openSocket(websocket_password);
+		await sleep(5000);
+	}
+	reconnecting = false;
 }
 
 export function openSocket(websocket_password: string) {
@@ -95,6 +132,7 @@ export function openSocket(websocket_password: string) {
 		console.log('Connected: Requesting stats and files');
 		sendStatRequest();
 		sendFilenamesRequest();
+		sendCurrentFileRequest();
 	};
 
 	ws.onmessage = (message) => {
@@ -104,11 +142,13 @@ export function openSocket(websocket_password: string) {
 	ws.onerror = (error) => {
 		console.error('WebSocket Error:', error);
 		socketState.set(ws.readyState);
+		reconnect(websocket_password);
 	};
 
 	ws.onclose = ({ code, reason }) => {
 		console.error(`Disconnected (Code: ${code}, Reason: ${reason.toString()})`);
 		socketState.set(ws.readyState);
+		reconnect(websocket_password);
 	};
 }
 
@@ -120,34 +160,42 @@ export function closeSocket() {
 }
 
 export function sendFanValue(value: number) {
+	console.log('sending fan value');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_FAN, value]));
 }
 
 export function sendLedValue(value: number) {
+	console.log('sending led value')
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LED, value]));
 }
 
 export function sendStart(pattern: string) {
+	console.log('sending start command');
 	const charArray = new TextEncoder().encode(pattern);
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_START, ...charArray, 0x00]));
 }
 
 export function sendPause() {
+	console.log('sending pause command');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_PAUSE]));
 }
 
 export function sendResume() {
+	console.log('sending resume command');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_RESUME]));
 }
 
 export function sendStop() {
+	console.log('sending stop command');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STOP]));
 }
 
 export function sendHome() {
+	console.log('sending home command');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_HOME]));
 }
 export function sendMove(dx: number, dy: number) {
+	console.log('sending move command');
 	let view = new DataView(new ArrayBuffer(3));
 	view.setUint8(0, WSCmdType_t.WSCmdType_MOVE);
 	view.setInt8(1, dx);
@@ -156,23 +204,33 @@ export function sendMove(dx: number, dy: number) {
 }
 
 export function sendSafemode(safemode: boolean) {
+	console.log('sending safemode');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_SAFEMODE, safemode ? 1 : 0]));
 }
 
 export function sendStatRequest() {
+	console.log('requesting stats');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_STAT]));
 }
 
+export function sendCurrentFileRequest() {
+	console.log('requesting current file')
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_CURRENT_FILE]));
+}
+
 export function sendFilenamesRequest() {
+	console.log('requesting file names');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_FILE_NAMES]));
 }
 
 export function sendDeletePattern(pattern: string) {
+	console.log('requesting file deletion');
 	const charArray = new TextEncoder().encode(pattern);
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_DELETE_FILE, ...charArray, 0x00]));
 }
 
 export function sendFeedrateValue(value: number) {
+	console.log('sending feedrate value')
 	let view = new DataView(new ArrayBuffer(3));
 	view.setUint8(0, WSCmdType_t.WSCmdType_FEEDRATE);
 	view.setUint16(1, value);
@@ -227,6 +285,7 @@ export async function sendPatternFragments(
 	sendingPattern.set(false);
 }
 
-export function sendLogLevel(level: number) {
-	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LOG_LEVEL, level]));
+export function sendLogLevel(level: boolean) {
+	console.log('sending log level')
+	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LOG_LEVEL, level ? 1 : 0]));
 }

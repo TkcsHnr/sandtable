@@ -1,31 +1,26 @@
 <script lang="ts">
-	import { MachineState, machineStats } from './stores';
-	import { sendPause, sendResume, sendStart, sendStop, ws } from './websocket';
-
-	$: state = $machineStats.state;
+	import { currentFile, machineStats } from './stores';
+	import { sendPause, sendResume, sendStop, ws } from './websocket';
 
 	function startPauseToggleButton() {
-		if(state == MachineState.BUSY) 
-			sendPause();
-		else if(state == MachineState.PAUSED)
-			sendResume();
+		if ($machineStats.executing) sendPause();
+		else sendResume();
 	}
-
 </script>
 
 <div class="flex flex-col gap-1">
 	<button
 		class="btn btn-square"
-		aria-label={state == MachineState.BUSY ? 'Pause' : 'Resume'}
+		aria-label={$machineStats.executing ? 'Pause' : 'Resume'}
 		onclick={startPauseToggleButton}
-		disabled={$machineStats.state == MachineState.IDLE || $machineStats.state == MachineState.HOMING}
+		disabled={$machineStats.homing || (!$machineStats.executing && $currentFile == "")}
 	>
-		<i class="fa-solid {state == MachineState.BUSY ? 'fa-pause' : 'fa-play'}"></i>
+		<i class="fa-solid {$machineStats.executing ? 'fa-pause' : 'fa-play'}"></i>
 	</button>
 	<button
 		class="btn btn-square"
 		aria-label="Stop"
-		disabled={state == MachineState.IDLE}
+		disabled={!$machineStats.busy}
 		onclick={sendStop}
 	>
 		<i class="fa-solid fa-stop"></i>

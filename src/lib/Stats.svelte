@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { espConnected, MachineState, machineStats, socketState } from './stores';
+	import { espConnected, machineStats, socketState } from './stores';
 
 	type socketStates = { [code: number]: { name: string; color: string; icon: string } };
 	const states: socketStates = {
@@ -9,10 +9,6 @@
 		3: { name: 'CLOSED', color: 'text-error', icon: 'fa-link-slash' }
 	};
 	const machineStates: { [state: number]: string } = {};
-	machineStates[MachineState.BUSY] = 'Busy';
-	machineStates[MachineState.IDLE] = 'Idle';
-	machineStates[MachineState.HOMING] = 'Homing';
-	machineStates[MachineState.PAUSED] = 'Paused';
 </script>
 
 <div class="flex gap-2 flex-wrap justify-center">
@@ -38,14 +34,14 @@
 	<div class="stats shadow">
 		<div class="stat">
 			<div class="stat-title">X position</div>
-			<div class="stat-value">{Math.round($machineStats.x)}</div>
+			<div class="stat-value">{$machineStats.homed ? Math.round($machineStats.x) : '-'}</div>
 			<div class="stat-desc">mm</div>
 		</div>
 	</div>
 	<div class="stats shadow">
 		<div class="stat">
 			<div class="stat-title">Y position</div>
-			<div class="stat-value">{Math.round($machineStats.y)}</div>
+			<div class="stat-value">{$machineStats.homed ? Math.round($machineStats.y) : '-'}</div>
 			<div class="stat-desc">mm</div>
 		</div>
 	</div>
@@ -53,7 +49,15 @@
 		<div class="stat">
 			<div class="stat-title">State</div>
 			<div class="stat-value">
-				{machineStates[$machineStats.state].toString()}
+				{#if $machineStats.homing}
+					Homing
+				{:else if $machineStats.executing}
+					Executing
+				{:else if $machineStats.busy}
+					Busy
+				{:else}
+					Idle
+				{/if}
 			</div>
 		</div>
 	</div>

@@ -1,6 +1,16 @@
 <script lang="ts">
 	import { machineStats } from './stores';
 	import { sendFeedrateValue } from './websocket';
+
+	const min = 200;
+	const max = 4000;
+
+	$: numberInput = $machineStats.feedrate;
+	function checkAndSend() {
+		if (numberInput < min || numberInput > max) return;
+		$machineStats.feedrate = numberInput;
+		sendFeedrateValue($machineStats.feedrate);
+	}
 </script>
 
 <div class="flex justify-center gap-2 items-center">
@@ -12,12 +22,22 @@
 		step="1"
 		bind:value={$machineStats.feedrate}
 		class="range range-sm"
-		on:input={() => sendFeedrateValue($machineStats.feedrate)}
+		oninput={checkAndSend}
 	/>
 	<div class="flex">
 		<i class="fa-solid fa-angle-right -mr-1"></i>
 		<i class="fa-solid fa-angle-right"></i>
 		<i class="fa-solid fa-angle-right -ml-1"></i>
 	</div>
-	<span class="badge min-w-14">{$machineStats.feedrate}</span>
+	<form class="contents" onsubmit={checkAndSend}>
+		<input type="number" {min} {max} class="badge min-w-14 text-center" bind:value={numberInput} />
+	</form>
 </div>
+
+<style>
+	input[type='number']::-webkit-inner-spin-button,
+	input[type='number']::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+</style>

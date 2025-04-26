@@ -4,29 +4,27 @@ type MachineStats = {
 	x: number;
 	y: number;
 	feedrate: number;
-	homed: boolean;
-	state: MachineState;
 	led: number;
 	fan: number;
+	busy: boolean;
+	executing: boolean;
+	homing: boolean;
+	yHomed: boolean;
+	homed: boolean;
 	safemode: boolean;
-	logEnabled: boolean;
 };
-export enum MachineState {
-	IDLE = 0x01,
-	PAUSED = 0x02,
-	BUSY = 0x03,
-	HOMING = 0x04
-}
 const defaultMachineStats: MachineStats = {
-	homed: false,
 	x: 0,
 	y: 0,
-	state: MachineState.IDLE,
-	led: 255,
-	feedrate: 1000,
+	feedrate: 1600,
+	led: 0,
 	fan: 0,
+	busy: false,
+	executing: false,
+	homing: false,
+	yHomed: false,
+	homed: false,
 	safemode: true,
-    logEnabled: true
 };
 
 export const machinePatterns = writable<string[]>([]);
@@ -34,3 +32,5 @@ export const socketState = writable<number>(3);
 export const espConnected = writable<boolean>(false);
 export const machineStats = writable<MachineStats>(defaultMachineStats);
 export const sendingPattern = writable<boolean>(false);
+export const currentFile = writable<string>("");
+export const logEnabled = writable<boolean>(true);

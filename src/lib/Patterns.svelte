@@ -1,11 +1,8 @@
 <script lang="ts">
-	import { machinePatterns, MachineState, machineStats } from './stores';
-	import { sendDeletePattern, sendStart } from './websocket.js';
+	import { currentFile, machinePatterns, machineStats } from './stores';
+	import { sendDeletePattern, sendPause, sendResume, sendStart } from './websocket.js';
 
-	$: disabled =
-		$machineStats.state == MachineState.BUSY ||
-		$machineStats.state == MachineState.HOMING ||
-		(!$machineStats.homed && $machineStats.safemode);
+	$: disabled = $machineStats.busy || (!$machineStats.homed && $machineStats.safemode);
 </script>
 
 {#if $machinePatterns.length > 0}
@@ -13,15 +10,28 @@
 		<h2 class="text-lg font-bold px-2">Patterns on ESP:</h2>
 		{#each $machinePatterns as pattern}
 			<div class="flex gap-2 items-baseline">
-				<button
-					class="btn btn-sm btn-square btn-ghost"
-					aria-label="start"
-					onclick={() => sendStart(pattern)}
-					{disabled}
-				>
-					<i class="fa-solid fa-play"></i>
-				</button>
-				<p>{pattern.replace('/', '').replace('.bin', '')}</p>
+				{#if pattern == $currentFile}
+					<button
+						class="btn btn-sm btn-square btn-primary"
+						aria-label="start"
+						onclick={() => ($machineStats.executing ? sendPause() : sendResume())}
+					>
+						<i class="fa-solid {$machineStats.executing ? 'fa-pause' : 'fa-play'}"
+						></i>
+					</button>
+				{:else}
+					<button
+						class="btn btn-sm btn-square btn-ghost"
+						aria-label="start"
+						onclick={() => sendStart(pattern)}
+						{disabled}
+					>
+						<i class="fa-solid fa-play"></i>
+					</button>
+				{/if}
+				<p class:font-bold={pattern == $currentFile}>
+					{pattern.replace('/', '').replace('.bin', '')}
+				</p>
 				<button
 					class="btn btn-sm btn-square btn-ghost ml-auto"
 					aria-label="delete"

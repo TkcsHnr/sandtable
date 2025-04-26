@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { MachineState, machineStats } from '$lib/stores';
+	import { machineStats } from '$lib/stores';
 	import { sendHome, sendMove } from './websocket';
 
 	$: disabled =
-		$machineStats.state == MachineState.HOMING ||
+		$machineStats.homing ||
+		$machineStats.executing ||
 		(!$machineStats.homed && $machineStats.safemode);
 
 	let unit = 10;
@@ -14,9 +15,8 @@
 		class="btn btn-square row-start-2 col-start-2"
 		aria-label="home"
 		onclick={() => sendHome()}
-		disabled={$machineStats.state == MachineState.BUSY}
 	>
-		{#if $machineStats.state == MachineState.HOMING}
+		{#if $machineStats.homing}
 			<span class="loading loading-spinner"></span>
 		{:else}
 			<i
