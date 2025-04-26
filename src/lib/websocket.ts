@@ -6,7 +6,6 @@ import {
 	socketState,
 	sendingPattern
 } from './stores';
-import CRC32 from 'crc-32';
 
 export enum WSCmdType_t {
 	WSCmdType_ACK = 0x00, // Acknowledgement
@@ -27,7 +26,8 @@ export enum WSCmdType_t {
 	WSCmdType_ESP_STATE = 0x0f,
 	WSCmdType_SAFEMODE = 0x10,
 	WSCmdType_DELETE_FILE = 0x11,
-	WSCmdType_LOG_LEVEL = 0x12
+	WSCmdType_LOG_LEVEL = 0x12,
+	WSCmdType_POSITION = 0x13
 }
 
 export let ws: WebSocket;
@@ -48,6 +48,13 @@ function handleBinaryMessage(data: any) {
 	switch (cmdByte as WSCmdType_t) {
 		case WSCmdType_t.WSCmdType_ACK:
 			ackResolve();
+			break;
+		case WSCmdType_t.WSCmdType_POSITION:
+			machineStats.update((current) => ({
+				...current,
+				x: dataView.getUint16(1) / 100.0,
+				y: dataView.getUint16(3) / 100.0
+			}));
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
 			machineStats.set({
@@ -184,7 +191,7 @@ async function sendPacket(offset: number, nums: number, pointNums: number[]) {
 	}
 	ws.send(dataView.buffer);
 	await waitForAck();
-	console.log(dataView.buffer.byteLength, "bytes sent");
+	console.log(dataView.buffer.byteLength, 'bytes sent');
 }
 
 export async function sendPatternFragments(
@@ -204,7 +211,7 @@ export async function sendPatternFragments(
 	ws.send(new Uint8Array([...new Uint8Array(dataView.buffer), ...charArray, 0x00]));
 	await waitForAck();
 
-	let nums = coordinatePairs * 2;	
+	let nums = coordinatePairs * 2;
 	let offset = 0;
 	while (offset <= pointNums.length - nums) {
 		await sendPacket(offset, nums, pointNums);
