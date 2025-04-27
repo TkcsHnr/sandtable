@@ -10,7 +10,6 @@
 	};
 	const machineStates: { [state: number]: string } = {};
 </script>
-
 <div class="flex gap-2 flex-wrap justify-center">
 	<div class="stats">
 		<div class="stat">

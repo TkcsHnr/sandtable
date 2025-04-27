@@ -20,7 +20,6 @@
 	<button
 		class="btn btn-square"
 		aria-label="Stop"
-		disabled={!$machineStats.busy}
 		onclick={sendStop}
 	>
 		<i class="fa-solid fa-stop"></i>

@@ -43,14 +43,12 @@
 			ctx.moveTo(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1]);
 		else ctx.moveTo(x, y);
 
-		ctx.strokeStyle = orange[300];
-		ctx.lineWidth = 6;
 		ctx.lineTo(x, y);
+		ctx.strokeStyle = orange[300];
+		ctx.lineWidth = 8;
 		ctx.stroke();
-
 		ctx.strokeStyle = orange[200];
 		ctx.lineWidth = 4;
-		ctx.lineTo(x, y);
 		ctx.stroke();
 
 		pointNums.push(x, y);
@@ -193,7 +191,7 @@
 	let prevX: number, prevY: number;
 	machineStats.subscribe(($machineStats) => {
 		if (!ctx) return;
-		if ($machineStats.homing || !$machineStats.busy) return;
+		if ($machineStats.homing || !$machineStats.executing) return;
 
 		ctx.moveTo(prevX || $machineStats.x, prevY || $machineStats.y);
 		ctx.lineTo($machineStats.x, $machineStats.y);
