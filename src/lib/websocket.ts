@@ -4,9 +4,12 @@ import {
 	machineStats,
 	socketState,
 	sendingPattern,
-	currentFile
+	currentFile,
+	position,
+	feedrate,
+	led,
+	fan
 } from './stores';
-
 
 enum BoolMask {
 	BUSY = 0x80,
@@ -64,21 +67,21 @@ function handleBinaryMessage(data: any) {
 			ackResolve();
 			break;
 		case WSCmdType_t.WSCmdType_POSITION:
-			machineStats.update((current) => ({
-				...current,
+			position.set({
 				x: dataView.getUint16(1) / 100.0,
 				y: dataView.getUint16(3) / 100.0
-			}));
+			});
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
 			let bools = dataView.getUint8(1);
-
-			machineStats.set({
+			position.set({
 				x: dataView.getUint16(2) / 100.0,
-				y: dataView.getUint16(4) / 100.0,
-				feedrate: dataView.getUint16(6),				
-				led: dataView.getUint8(8),
-				fan: dataView.getUint8(9),
+				y: dataView.getUint16(4) / 100.0
+			});
+			feedrate.set(dataView.getUint16(6));
+			led.set(dataView.getUint8(8));
+			fan.set(dataView.getUint8(9));
+			machineStats.set({
 				busy: Boolean(bools & BoolMask.BUSY),
 				executing: Boolean(bools & BoolMask.EXECUTING),
 				homing: Boolean(bools & BoolMask.HOMING),
@@ -112,7 +115,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let reconnecting = false;
 async function reconnect(websocket_password: string) {
-	if(reconnecting) return;
+	if (reconnecting) return;
 	reconnecting = true;
 	while (!ws || ws.readyState != WebSocket.OPEN) {
 		console.log('reconnecting to websocket');
@@ -165,7 +168,7 @@ export function sendFanValue(value: number) {
 }
 
 export function sendLedValue(value: number) {
-	console.log('sending led value')
+	console.log('sending led value');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LED, value]));
 }
 
@@ -214,7 +217,7 @@ export function sendStatRequest() {
 }
 
 export function sendCurrentFileRequest() {
-	console.log('requesting current file')
+	console.log('requesting current file');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_CURRENT_FILE]));
 }
 
@@ -230,7 +233,7 @@ export function sendDeletePattern(pattern: string) {
 }
 
 export function sendFeedrateValue(value: number) {
-	console.log('sending feedrate value')
+	console.log('sending feedrate value');
 	let view = new DataView(new ArrayBuffer(3));
 	view.setUint8(0, WSCmdType_t.WSCmdType_FEEDRATE);
 	view.setUint16(1, value);
@@ -286,6 +289,6 @@ export async function sendPatternFragments(
 }
 
 export function sendLogLevel(level: boolean) {
-	console.log('sending log level')
+	console.log('sending log level');
 	ws.send(new Uint8Array([WSCmdType_t.WSCmdType_LOG_LEVEL, level ? 1 : 0]));
 }

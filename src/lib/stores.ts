@@ -1,11 +1,6 @@
 import { writable } from 'svelte/store';
 
 type MachineStats = {
-	x: number;
-	y: number;
-	feedrate: number;
-	led: number;
-	fan: number;
 	busy: boolean;
 	executing: boolean;
 	homing: boolean;
@@ -13,12 +8,11 @@ type MachineStats = {
 	homed: boolean;
 	safemode: boolean;
 };
+type Position = {
+	x: number;
+	y: number;
+}
 const defaultMachineStats: MachineStats = {
-	x: 0,
-	y: 0,
-	feedrate: 1600,
-	led: 0,
-	fan: 0,
 	busy: false,
 	executing: false,
 	homing: false,
@@ -27,6 +21,10 @@ const defaultMachineStats: MachineStats = {
 	safemode: true,
 };
 
+export const position = writable<Position>({x: 0, y: 0})
+export const feedrate = writable<number>(2000);
+export const led = writable<number>(0);
+export const fan = writable<number>(0);
 export const machinePatterns = writable<string[]>([]);
 export const socketState = writable<number>(3);
 export const espConnected = writable<boolean>(false);

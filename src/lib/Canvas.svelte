@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
 	import { sendPatternFragments } from './websocket';
-	import { currentFile, machineStats, sendingPattern } from './stores';
+	import { currentFile, machineStats, position, sendingPattern } from './stores';
 	const { amber, orange, yellow } = colors;
 
 	let pointNums: number[] = [];
@@ -193,8 +193,8 @@
 		if (!ctx) return;
 		if ($machineStats.homing || !$machineStats.executing) return;
 
-		ctx.moveTo(prevX || $machineStats.x, prevY || $machineStats.y);
-		ctx.lineTo($machineStats.x, $machineStats.y);
+		ctx.moveTo(prevX || $position.x, prevY || $position.y);
+		ctx.lineTo($position.x, $position.y);
 		ctx.lineWidth = 8;
 		ctx.strokeStyle = 'orange';
 		ctx.stroke();
@@ -202,8 +202,8 @@
 		ctx.strokeStyle = 'red';
 		ctx.stroke();
 
-		prevX = $machineStats.x;
-		prevY = $machineStats.y;
+		prevX = $position.x;
+		prevY = $position.y;
 	});
 
 	currentFile.subscribe(($currentFile) => {

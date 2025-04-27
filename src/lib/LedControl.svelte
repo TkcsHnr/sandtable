@@ -1,19 +1,29 @@
 <script lang="ts">
-	import { machineStats } from './stores';
+	import { led } from './stores';
 	import { sendLedValue } from './websocket';
 
-	$: ledPercentage = Math.round(($machineStats.led * 100) / 255);
+	$: ledPercentage = Math.round(($led * 100) / 255);
 
 	$: numberInput = ledPercentage;
 	function convertAndSend() {
 		if (numberInput > 100) return;
-		$machineStats.led = Math.floor((numberInput * 255) / 100);
-		sendLedValue($machineStats.led);
+		$led = Math.floor((numberInput * 255) / 100);
+		sendLedValue($led);
+	}
+
+	let glow: HTMLDivElement;
+	$: {
+		if (glow) {
+			glow.style.boxShadow =
+				ledPercentage == 0
+					? ''
+					: `0 0 ${ledPercentage / 20 + 6}px ${ledPercentage / 20 + 6}px #fff,
+					   0 0 ${(ledPercentage / 20) * 2 + 6}px ${ledPercentage / 20 + 6}px #ffcc00`;
+		}
 	}
 </script>
 
 <div class="flex justify-center gap-2 items-center">
-	<i class="fa-solid fa-moon"></i>
 	<input
 		type="range"
 		min="0"
@@ -23,7 +33,10 @@
 		class="range range-sm"
 		oninput={convertAndSend}
 	/>
-	<i class="fa-solid fa-sun"></i>
+	<div class="w-10 flex justify-center items-center relative">
+		<div class="absolute top-[6px] rounded-full" bind:this={glow}></div>
+		<i class="fa-solid fa-lightbulb text-xl text-center"></i>
+	</div>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
 			type="number"

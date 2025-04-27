@@ -1,19 +1,25 @@
 <script lang="ts">
-	import { machineStats } from './stores';
+	import { fan } from './stores';
 	import { sendFanValue } from './websocket';
 
-	$: fanPercentage = Math.round(($machineStats.fan * 100) / 255);
+	$: fanPercentage = Math.round(($fan * 100) / 255);
 
 	$: numberInput = fanPercentage;
 	function convertAndSend() {
 		if (numberInput > 100) return;
-		$machineStats.fan = Math.floor((numberInput * 255) / 100);
-		sendFanValue($machineStats.fan);
+		$fan = Math.floor((numberInput * 255) / 100);
+		sendFanValue($fan);
+	}
+
+	let fanIcon: HTMLElement;
+	$: {
+		if (fanIcon)
+			fanIcon.style.animation =
+				fanPercentage > 0 ? `spin linear infinite ${30 / fanPercentage}s` : '';
 	}
 </script>
 
 <div class="flex justify-center gap-2 items-center">
-	<i class="fa-solid fa-ban"></i>
 	<input
 		type="range"
 		min="0"
@@ -23,7 +29,7 @@
 		class="range range-sm"
 		oninput={convertAndSend}
 	/>
-	<i class="fa-solid fa-fan"></i>
+	<i class="fa-solid fa-fan w-10 text-center text-xl" bind:this={fanIcon}></i>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
 			type="number"

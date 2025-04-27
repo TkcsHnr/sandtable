@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { espConnected, machineStats, socketState } from './stores';
+	import { espConnected, machineStats, position, socketState } from './stores';
 
 	type socketStates = { [code: number]: { name: string; color: string; icon: string } };
 	const states: socketStates = {
@@ -33,14 +33,14 @@
 	<div class="stats shadow">
 		<div class="stat">
 			<div class="stat-title">X position</div>
-			<div class="stat-value">{$machineStats.homed ? Math.round($machineStats.x) : '-'}</div>
+			<div class="stat-value">{$machineStats.homed ? Math.round($position.x) : '-'}</div>
 			<div class="stat-desc">mm</div>
 		</div>
 	</div>
 	<div class="stats shadow">
 		<div class="stat">
 			<div class="stat-title">Y position</div>
-			<div class="stat-value">{$machineStats.homed ? Math.round($machineStats.y) : '-'}</div>
+			<div class="stat-value">{$machineStats.homed ? Math.round($position.y) : '-'}</div>
 			<div class="stat-desc">mm</div>
 		</div>
 	</div>
