@@ -15,12 +15,10 @@
 	$: {
 		if (fanIcon) {
 			if (fanPercentage > 0) {
-				fanIcon.style.animationName = 'spin';
-				fanIcon.style.animationDuration = `${30 / fanPercentage}s`;
-				fanIcon.style.animationTimingFunction = 'linear';
-				fanIcon.style.animationIterationCount = 'infinite';
+				const speed = `${30 / fanPercentage}s`;
+				fanIcon.style.setProperty('--fan-speed', speed);
 			} else {
-				fanIcon.style.animationName = 'none';
+				fanIcon.style.setProperty('--fan-speed', '0s');
 			}
 		}
 	}
@@ -37,7 +35,7 @@
 		oninput={convertAndSend}
 	/>
 	<div class="w-10 aspect-square flex justify-center items-center">
-		<i class="fa-solid fa-fan text-center text-2xl" bind:this={fanIcon}></i>
+		<i id="fanIcon" class="fa-solid fa-fan text-center text-2xl" bind:this={fanIcon}></i>
 	</div>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
@@ -55,6 +53,14 @@
 	input[type='number']::-webkit-outer-spin-button {
 		-webkit-appearance: none;
 		margin: 0;
+	}
+
+	#fanIcon {
+		--fan-speed: 0s;
+		animation-name: spin;
+		animation-duration: var(--fan-speed);
+		animation-iteration-count: infinite;
+		animation-timing-function: linear;
 	}
 
 	@keyframes spin {
