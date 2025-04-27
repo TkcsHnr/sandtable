@@ -84,7 +84,7 @@ function handleBinaryMessage(data: any) {
 				homing: Boolean(bools & BoolMask.HOMING),
 				yHomed: Boolean(bools & BoolMask.YHOMED),
 				homed: Boolean(bools & BoolMask.HOMED),
-				safemode: Boolean(BoolMask.SAFEMODE)
+				safemode: Boolean(bools & BoolMask.SAFEMODE)
 			});
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
