@@ -1,4 +1,6 @@
 <script lang="ts">
+	import StopButton from '$lib/StopButton.svelte';
+	import ResumePauseButton from '$lib/ResumePauseButton.svelte';
 	import Canvas from '$lib/Canvas.svelte';
 	import MovementControl from '$lib/MovementControl.svelte';
 	import Stats from '$lib/Stats.svelte';
@@ -7,7 +9,6 @@
 	import type { PageData } from './$types';
 	import LedControl from '$lib/LedControl.svelte';
 	import FeedrateControl from '$lib/FeedrateControl.svelte';
-	import RunControl from '$lib/RunControl.svelte';
 	import FanControl from '$lib/FanControl.svelte';
 	import SafemodeButton from '$lib/SafemodeButton.svelte';
 	import Patterns from '$lib/Patterns.svelte';
@@ -25,16 +26,17 @@
 
 <div class="flex gap-4 w-full flex-wrap justify-center items-center">
 	<MovementControl />
-	<div class="flex flex-col gap-1 items-center">
+	<div class="grid gap-1 grid-cols-2">
+		<ResumePauseButton />
 		<SafemodeButton />
-		<RunControl />
+		<StopButton />
+		<LogLevelButton />
 	</div>
-	<div class="flex flex-col gap-4 max-w-xs w-full">
+	<div class="flex flex-col gap-2 max-w-xs w-full">
 		<LedControl />
 		<FeedrateControl />
 		<FanControl />
 	</div>
-	<LogLevelButton />
 </div>
 <Stats />
 <div class="flex gap-4 flex-wrap">
