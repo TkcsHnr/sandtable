@@ -2,24 +2,26 @@
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
 	import { sendPatternFragments } from './websocket';
-	import { currentFile, machineStats, position, sendingPattern } from './stores';
+	import { currentFile, machineStats, position, prevPosition, sendingPattern } from './stores';
 	const { amber, orange, yellow } = colors;
+
+	export let patterns: string[];
 
 	let pointNums: number[] = [];
 
 	let canvas: HTMLCanvasElement;
 	let ctx: CanvasRenderingContext2D | null;
 	let drawing = false;
+	let preview = false;
 
-	export let patterns: string[];
-
-	let patternName = 'pattern';
 	export function clear() {
-		stopDrawing();
-		pointNums = [];
-		ctx?.clearRect(0, 0, canvas.width, canvas.height);
+		if (!ctx) return;
+		preview = false;
+		drawing = false;
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	}
 
+	let patternName = 'pattern';
 	function reset() {
 		clear();
 		patternSelector.selectedIndex = 0;
@@ -30,36 +32,7 @@
 		return pointNums;
 	}
 
-	function startDrawing() {
-		drawing = true;
-	}
-
-	function draw(x: number, y: number) {
-		if (!ctx) return;
-		if (!drawing) return;
-
-		ctx.beginPath();
-		if (pointNums.length > 0)
-			ctx.moveTo(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1]);
-		else ctx.moveTo(x, y);
-
-		ctx.lineTo(x, y);
-		ctx.strokeStyle = orange[300];
-		ctx.lineWidth = 8;
-		ctx.stroke();
-		ctx.strokeStyle = orange[200];
-		ctx.lineWidth = 4;
-		ctx.stroke();
-
-		pointNums.push(x, y);
-	}
-
-	function stopDrawing() {
-		drawing = false;
-		preview = false;
-	}
-
-	async function preciseMessageDelay(iterations = 1) {
+	async function preciseMessageDelay(iterations: number) {
 		for (let i = 0; i < iterations; i++) {
 			await new Promise((resolve) => {
 				const mc = new MessageChannel();
@@ -69,20 +42,48 @@
 		}
 	}
 
-	let preview = false;
-	async function previewPattern(delay = 1) {
-		let pointsCopy = structuredClone(pointNums);
+	async function drawPoints(points: number[], delay = 0) {
+		if (!ctx || points.length < 4) return;
+
 		clear();
-		startDrawing();
 		preview = true;
-		for (let i = 0; i < pointsCopy.length; i += 2) {
-			if (!drawing) {
+		for (let i = 0; i < points.length - 2; i += 2) {
+			draw(points[i], points[i + 1], points[i + 2], points[i + 3]);
+			if (delay > 0) await preciseMessageDelay(delay);
+			if (!preview) {
 				return;
 			}
-			draw(pointsCopy[i], pointsCopy[i + 1]);
-			await preciseMessageDelay(delay);
 		}
-		stopDrawing();
+		preview = false;
+	}
+
+	function draw(x1: number, y1: number, x2: number, y2: number, stroke: string = orange[300], fill: string = orange[200]) {
+		if (!ctx) return;
+
+		ctx.beginPath();
+		ctx.moveTo(x1, y1);
+		ctx.lineTo(x2, y2);
+
+		ctx.strokeStyle = stroke;
+		ctx.lineWidth = 10;
+		ctx.stroke();
+
+		ctx.strokeStyle = fill;
+		ctx.lineWidth = 9;
+		ctx.stroke();
+
+		ctx.closePath();
+	}
+
+	function manualDraw(x: number, y: number) {
+		if (!drawing) return;
+
+		if (pointNums.length == 0) {
+			draw(x, y, x, y);
+		} else {
+			draw(pointNums[pointNums.length - 2], pointNums[pointNums.length - 1], x, y);
+		}
+		pointNums.push(x, y);
 	}
 
 	function tokenizeGCodeLine(line: string): { [key: string]: string | number } {
@@ -103,11 +104,10 @@
 		return tokens;
 	}
 
-	async function drawGcode(lines: string[]) {
+	async function parseGcode(lines: string[]) {
+		let nums: number[] = [];
 		let x: number = 0;
 		let y: number = 0;
-		clear();
-		startDrawing();
 		for (let line of lines) {
 			line.trim();
 			if (line.startsWith(';') || line == '') continue;
@@ -117,10 +117,10 @@
 				if ('X' in tokens) x = parseFloat(tokens['X'].toString());
 				if ('Y' in tokens) y = parseFloat(tokens['Y'].toString());
 
-				draw(x, y);
+				nums.push(x, y);
 			}
 		}
-		stopDrawing();
+		return nums;
 	}
 
 	let patternSelector: HTMLSelectElement;
@@ -134,7 +134,8 @@
 			if (response.ok) {
 				const content = await response.text();
 				lines = content.split('\n');
-				drawGcode(lines);
+				pointNums = await parseGcode(lines);
+				drawPoints(pointNums);
 			}
 		} catch (error) {
 			console.error("Couldn't fetch pattern from files.");
@@ -146,10 +147,11 @@
 		if (!selectedFile) return;
 
 		const reader = new FileReader();
-		reader.onloadend = () => {
+		reader.onloadend = async () => {
 			if (reader.result) {
 				lines = reader.result.toString().split('\n');
-				drawGcode(lines);
+				pointNums = await parseGcode(lines);
+				drawPoints(pointNums);
 			}
 		};
 		reader.readAsText(selectedFile);
@@ -183,27 +185,23 @@
 		if (ctx) {
 			ctx.lineJoin = 'round';
 			ctx.lineCap = 'round';
+			ctx.globalAlpha = 0.9;
 			ctx.translate(0, canvas.height);
 			ctx.scale(1, -1);
 		}
 	});
 
-	let prevX: number, prevY: number;
-	machineStats.subscribe(($machineStats) => {
+	position.subscribe(($position) => {
 		if (!ctx) return;
 		if ($machineStats.homing || !$machineStats.executing) return;
 
-		ctx.moveTo(prevX || $position.x, prevY || $position.y);
-		ctx.lineTo($position.x, $position.y);
-		ctx.lineWidth = 8;
-		ctx.strokeStyle = 'orange';
-		ctx.stroke();
-		ctx.lineWidth = 4;
-		ctx.strokeStyle = 'red';
-		ctx.stroke();
+		draw($prevPosition.x, $prevPosition.y, $position.x, $position.y, orange[400], orange[300]);
 
-		prevX = $position.x;
-		prevY = $position.y;
+		ctx.beginPath();
+		ctx.arc($position.x, $position.y, 4, 0, 2 * Math.PI, true);
+		ctx.fillStyle = 'red';
+		ctx.fill();
+		ctx.closePath();
 	});
 
 	currentFile.subscribe(($currentFile) => {
@@ -211,6 +209,14 @@
 		patternSelector.value = $currentFile.replace('.bin', '.gcode');
 		handlePatternChange();
 	});
+	
+	function startManualDraw() {
+		if(preview) return;
+		drawing = true;
+	}
+	function stopManualDraw() {
+		drawing = false;
+	}
 </script>
 
 <div class="flex flex-col items-center relative">
@@ -243,7 +249,7 @@
 				<option value={pattern}>{pattern.replace('.gcode', '')}</option>
 			{/each}
 		</select>
-		<button class="btn" onclick={() => previewPattern()} aria-label="preview">
+		<button class="btn" onclick={() => drawPoints(pointNums, 1)} aria-label="preview">
 			<i class="fa-solid fa-eye"></i>
 		</button>
 		{#if $sendingPattern}
@@ -263,12 +269,12 @@
 	</div>
 	<canvas
 		bind:this={canvas}
-		onmousedown={startDrawing}
-		onmousemove={(e) => draw(...getCanvasCoords(e))}
-		onmouseup={stopDrawing}
-		ontouchstart={startDrawing}
-		ontouchmove={(e) => draw(...getCanvasCoords(e))}
-		ontouchend={stopDrawing}
+		onmousedown={startManualDraw}
+		onmousemove={(e) => manualDraw(...getCanvasCoords(e))}
+		onmouseup={stopManualDraw}
+		ontouchstart={startManualDraw}
+		ontouchmove={(e) => manualDraw(...getCanvasCoords(e))}
+		ontouchend={stopManualDraw}
 		width="490"
 		height="490"
 		class="touch-none bg-orange-100 max-w-[490px] w-full {preview ? 'pointer-events-none' : ''}"

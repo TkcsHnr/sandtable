@@ -13,9 +13,16 @@
 
 	let fanIcon: HTMLElement;
 	$: {
-		if (fanIcon)
-			fanIcon.style.animation =
-				fanPercentage > 0 ? `spin linear infinite ${30 / fanPercentage}s` : '';
+		if (fanIcon) {
+			if (fanPercentage > 0) {
+				fanIcon.style.animationName = 'spin';
+				fanIcon.style.animationDuration = `${30 / fanPercentage}s`;
+				fanIcon.style.animationTimingFunction = 'linear';
+				fanIcon.style.animationIterationCount = 'infinite';
+			} else {
+				fanIcon.style.animationName = 'none';
+			}
+		}
 	}
 </script>
 
@@ -29,7 +36,9 @@
 		class="range range-sm"
 		oninput={convertAndSend}
 	/>
-	<i class="fa-solid fa-fan w-10 aspect-square text-center text-2xl" bind:this={fanIcon}></i>
+	<div class="w-10 aspect-square flex justify-center items-center">
+		<i class="fa-solid fa-fan text-center text-2xl" bind:this={fanIcon}></i>
+	</div>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
 			type="number"
@@ -46,5 +55,14 @@
 	input[type='number']::-webkit-outer-spin-button {
 		-webkit-appearance: none;
 		margin: 0;
+	}
+
+	@keyframes spin {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

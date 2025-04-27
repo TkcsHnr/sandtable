@@ -1,3 +1,4 @@
+import { get } from 'svelte/store';
 import {
 	espConnected,
 	machinePatterns,
@@ -8,7 +9,8 @@ import {
 	position,
 	feedrate,
 	led,
-	fan
+	fan,
+	prevPosition
 } from './stores';
 
 enum BoolMask {
@@ -67,6 +69,7 @@ function handleBinaryMessage(data: any) {
 			ackResolve();
 			break;
 		case WSCmdType_t.WSCmdType_POSITION:
+			prevPosition.set(get(position));
 			position.set({
 				x: dataView.getUint16(1) / 100.0,
 				y: dataView.getUint16(3) / 100.0
@@ -74,6 +77,7 @@ function handleBinaryMessage(data: any) {
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
 			let bools = dataView.getUint8(1);
+			prevPosition.set(get(position));
 			position.set({
 				x: dataView.getUint16(2) / 100.0,
 				y: dataView.getUint16(4) / 100.0
