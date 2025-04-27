@@ -29,7 +29,7 @@
 		class="range range-sm"
 		oninput={convertAndSend}
 	/>
-	<i class="fa-solid fa-fan w-10 text-center text-xl" bind:this={fanIcon}></i>
+	<i class="fa-solid fa-fan w-10 aspect-square text-center text-2xl" bind:this={fanIcon}></i>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
 			type="number"

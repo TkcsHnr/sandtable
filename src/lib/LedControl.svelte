@@ -33,9 +33,9 @@
 		class="range range-sm"
 		oninput={convertAndSend}
 	/>
-	<div class="w-10 flex justify-center items-center relative">
-		<div class="absolute top-[6px] rounded-full" bind:this={glow}></div>
-		<i class="fa-solid fa-lightbulb text-xl text-center"></i>
+	<div class="w-10 aspect-square flex justify-center items-center relative">
+		<div class="absolute top-[9px] rounded-full" bind:this={glow}></div>
+		<i class="fa-solid fa-lightbulb text-2xl text-center"></i>
 	</div>
 	<form class="contents" onsubmit={convertAndSend}>
 		<input
