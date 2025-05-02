@@ -1,14 +1,27 @@
 <script lang="ts">
+	import { get } from 'svelte/store';
 	import { led } from './stores';
 	import { sendLedValue } from './websocket';
 
-	$: ledPercentage = Math.round(($led * 100) / 255);
 
-	$: numberInput = ledPercentage;
+
+	let sliding = false;
+	$: localValue = get(led);
+	$: ledPercentage = Math.round((localValue * 100) / 255);
+	led.subscribe((value) => {
+		if (!sliding) {
+			localValue = value;
+		}
+	});
+
 	function convertAndSend() {
-		if (numberInput > 100) return;
-		$led = Math.floor((numberInput * 255) / 100);
-		sendLedValue($led);
+		if (ledPercentage > 100) return;
+		sendLedValue(Math.floor((ledPercentage * 255) / 100));
+	}
+
+	function slideInput() {
+		sliding = true;
+		sendLedValue(localValue);
 	}
 
 	let glow: HTMLDivElement;
@@ -27,11 +40,12 @@
 	<input
 		type="range"
 		min="0"
-		max="100"
+		max="255"
 		step="1"
-		bind:value={ledPercentage}
+		bind:value={localValue}
 		class="range range-sm"
-		oninput={convertAndSend}
+		oninput={slideInput}
+		onchange={() => (sliding = false)}
 	/>
 	<div class="w-10 aspect-square flex justify-center items-center relative">
 		<div class="absolute top-[9px] rounded-full" bind:this={glow}></div>
@@ -43,7 +57,7 @@
 			min="0"
 			max="100"
 			class="badge min-w-14 text-center"
-			bind:value={numberInput}
+			bind:value={ledPercentage}
 		/>
 	</form>
 </div>

@@ -1,14 +1,25 @@
 <script lang="ts">
+	import { get } from 'svelte/store';
 	import { fan } from './stores';
 	import { sendFanValue } from './websocket';
 
-	$: fanPercentage = Math.round(($fan * 100) / 255);
+	let sliding = false;
+	$: localValue = get(fan);
+	$: fanPercentage = Math.round((localValue * 100) / 255);
+	fan.subscribe((value) => {
+		if (!sliding) {
+			localValue = value;
+		}
+	});
 
-	$: numberInput = fanPercentage;
 	function convertAndSend() {
-		if (numberInput > 100) return;
-		$fan = Math.floor((numberInput * 255) / 100);
-		sendFanValue($fan);
+		if (fanPercentage > 100) return;
+		sendFanValue(Math.floor((fanPercentage * 255) / 100));
+	}
+
+	function slideInput() {
+		sliding = true;
+		sendFanValue(localValue);
 	}
 
 	let fanIcon: HTMLElement;
@@ -28,11 +39,12 @@
 	<input
 		type="range"
 		min="0"
-		max="100"
+		max="255"
 		step="1"
-		bind:value={fanPercentage}
+		bind:value={localValue}
 		class="range range-sm"
-		oninput={convertAndSend}
+		oninput={slideInput}
+		onchange={() => (sliding = false)}
 	/>
 	<div class="w-10 aspect-square flex justify-center items-center">
 		<i id="fanIcon" class="fa-solid fa-fan text-center text-2xl" bind:this={fanIcon}></i>
@@ -43,7 +55,7 @@
 			min="0"
 			max="100"
 			class="badge min-w-14 text-center"
-			bind:value={numberInput}
+			bind:value={fanPercentage}
 		/>
 	</form>
 </div>

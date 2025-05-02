@@ -1,17 +1,30 @@
 <script lang="ts">
+	import { get } from 'svelte/store';
 	import { feedrate } from './stores';
 	import { sendFeedrateValue } from './websocket';
 
 	const min = 200;
 	const max = 4000;
 
-	$: feedrateRatio = ($feedrate - min) / (max - min);
+	let sliding = false;
+	$: localValue = get(feedrate);
+	feedrate.subscribe((value) => {
+		if (!sliding) {
+			localValue = value;
+		}
+	});
 
-	$: numberInput = $feedrate;
+
+	$: feedrateRatio = (localValue - min) / (max - min);
+	$: numberInput = localValue;
 	function checkAndSend() {
 		if (numberInput < min || numberInput > max) return;
-		$feedrate = numberInput;
-		sendFeedrateValue($feedrate);
+		sendFeedrateValue(numberInput);
+	}
+
+	function slideInput() {
+		sliding = true;
+		sendFeedrateValue(localValue);
 	}
 
 	const r = 50;
@@ -27,9 +40,10 @@
 		min="200"
 		max="4000"
 		step="1"
-		bind:value={$feedrate}
+		bind:value={localValue}
 		class="range range-sm"
-		oninput={checkAndSend}
+		oninput={slideInput}
+		onchange={() => (sliding = false)}
 	/>
 	<svg xmlns="http://www.w3.org/2000/svg" class="w-10 aspect-square" viewBox="0 0 {2 * r} {2 * r}">
 		<path
