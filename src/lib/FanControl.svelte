@@ -6,6 +6,7 @@
 	let sliding = false;
 	$: localValue = get(fan);
 	$: fanPercentage = Math.round((localValue * 100) / 255);
+	$: numberInput = fanPercentage;
 	fan.subscribe((value) => {
 		if (!sliding) {
 			localValue = value;
@@ -13,8 +14,8 @@
 	});
 
 	function convertAndSend() {
-		if (fanPercentage > 100) return;
-		sendFanValue(Math.floor((fanPercentage * 255) / 100));
+		if (numberInput > 100) return;
+		sendFanValue(Math.floor((numberInput * 255) / 100));
 	}
 
 	function slideInput() {
@@ -55,7 +56,7 @@
 			min="0"
 			max="100"
 			class="badge min-w-14 text-center"
-			bind:value={fanPercentage}
+			bind:value={numberInput}
 		/>
 	</form>
 </div>

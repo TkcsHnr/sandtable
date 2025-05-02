@@ -8,6 +8,7 @@
 	let sliding = false;
 	$: localValue = get(led);
 	$: ledPercentage = Math.round((localValue * 100) / 255);
+	$: numberInput = ledPercentage;
 	led.subscribe((value) => {
 		if (!sliding) {
 			localValue = value;
@@ -15,8 +16,8 @@
 	});
 
 	function convertAndSend() {
-		if (ledPercentage > 100) return;
-		sendLedValue(Math.floor((ledPercentage * 255) / 100));
+		if (numberInput > 100) return;
+		sendLedValue(Math.floor((numberInput * 255) / 100));
 	}
 
 	function slideInput() {
@@ -57,7 +58,7 @@
 			min="0"
 			max="100"
 			class="badge min-w-14 text-center"
-			bind:value={ledPercentage}
+			bind:value={numberInput}
 		/>
 	</form>
 </div>
