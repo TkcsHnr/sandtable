@@ -76,6 +76,7 @@ function handleBinaryMessage(data: any) {
 			});
 			break;
 		case WSCmdType_t.WSCmdType_STAT:
+			console.log("Stats received");
 			let bools = dataView.getUint8(1);
 			prevPosition.set(get(position));
 			position.set({
@@ -95,6 +96,7 @@ function handleBinaryMessage(data: any) {
 			});
 			break;
 		case WSCmdType_t.WSCmdType_FILE_NAMES:
+			console.log("File names received");
 			const fileCount = dataView.getUint8(1);
 			charArray = new Uint8Array(dataView.buffer);
 			let fileNames: string[] = [];
@@ -105,12 +107,19 @@ function handleBinaryMessage(data: any) {
 			machinePatterns.set(fileNames);
 			break;
 		case WSCmdType_t.WSCmdType_CURRENT_FILE:
+			console.log("Current file received");
 			charArray = new Uint8Array(dataView.buffer);
 			decoder = new TextDecoder('utf-8');
 			currentFile.set(decoder.decode(charArray.slice(1, charArray.length - 1)));
 			break;
 		case WSCmdType_t.WSCmdType_ESP_STATE:
 			espConnected.set(dataView.getUint8(1) > 0);
+			if(get(espConnected) == true) {
+				console.log('ESP connected');
+				sendStatRequest();
+				sendFilenamesRequest();
+				sendCurrentFileRequest();
+			}
 			break;
 	}
 }
@@ -136,10 +145,6 @@ export function openSocket(websocket_password: string) {
 
 	ws.onopen = () => {
 		socketState.set(ws.readyState);
-		console.log('Connected: Requesting stats and files');
-		sendStatRequest();
-		sendFilenamesRequest();
-		sendCurrentFileRequest();
 	};
 
 	ws.onmessage = (message) => {
