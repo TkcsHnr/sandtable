@@ -1,19 +1,16 @@
 <script lang="ts">
-	import { get } from 'svelte/store';
 	import { led } from './stores';
 	import { sendLedValue } from './websocket';
 
 
 
 	let sliding = false;
-	$: localValue = get(led);
+	$: localValue = 0;
+	$: if(!sliding) {
+		localValue = $led;
+	}
 	$: ledPercentage = Math.round((localValue * 100) / 255);
 	$: numberInput = ledPercentage;
-	led.subscribe((value) => {
-		if (!sliding) {
-			localValue = value;
-		}
-	});
 
 	function convertAndSend() {
 		if (numberInput > 100) return;

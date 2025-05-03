@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { get } from 'svelte/store';
 	import { feedrate } from './stores';
 	import { sendFeedrateValue } from './websocket';
 
@@ -7,16 +6,13 @@
 	const max = 4000;
 
 	let sliding = false;
-	$: localValue = get(feedrate);
-	feedrate.subscribe((value) => {
-		if (!sliding) {
-			localValue = value;
-		}
-	});
-
-
+	$: localValue = 0;
+	$: if(!sliding) {
+		localValue = $feedrate
+	}
 	$: feedrateRatio = (localValue - min) / (max - min);
 	$: numberInput = localValue;
+	
 	function checkAndSend() {
 		if (numberInput < min || numberInput > max) return;
 		sendFeedrateValue(numberInput);

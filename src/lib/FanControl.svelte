@@ -1,17 +1,14 @@
 <script lang="ts">
-	import { get } from 'svelte/store';
 	import { fan } from './stores';
 	import { sendFanValue } from './websocket';
 
 	let sliding = false;
-	$: localValue = get(fan);
+	$: localValue = 0;
+	$: if(!sliding) {
+		localValue = $fan;
+	}
 	$: fanPercentage = Math.round((localValue * 100) / 255);
 	$: numberInput = fanPercentage;
-	fan.subscribe((value) => {
-		if (!sliding) {
-			localValue = value;
-		}
-	});
 
 	function convertAndSend() {
 		if (numberInput > 100) return;

@@ -124,21 +124,9 @@ function handleBinaryMessage(data: any) {
 	}
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-let reconnecting = false;
-async function reconnect(websocket_password: string) {
-	if (reconnecting) return;
-	reconnecting = true;
-	while (!ws || ws.readyState != WebSocket.OPEN) {
-		console.log('reconnecting to websocket');
-		openSocket(websocket_password);
-		await sleep(5000);
-	}
-	reconnecting = false;
-}
-
 export function openSocket(websocket_password: string) {
+	closeSocket();
+
 	ws = new WebSocket('wss://sandtable-websocket.onrender.com', ['webapp', websocket_password]);
 	ws.binaryType = 'arraybuffer';
 	socketState.set(ws.readyState);
@@ -154,18 +142,18 @@ export function openSocket(websocket_password: string) {
 	ws.onerror = (error) => {
 		console.error('WebSocket Error:', error);
 		socketState.set(ws.readyState);
-		reconnect(websocket_password);
+		openSocket(websocket_password);
 	};
 
 	ws.onclose = ({ code, reason }) => {
 		console.error(`Disconnected (Code: ${code}, Reason: ${reason.toString()})`);
 		socketState.set(ws.readyState);
-		reconnect(websocket_password);
+		openSocket(websocket_password);
 	};
 }
 
 export function closeSocket() {
-	if (ws) {
+	if (ws && ws.readyState != WebSocket.CLOSED) {
 		ws.close();
 		socketState.set(ws.readyState);
 	}
