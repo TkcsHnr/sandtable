@@ -6,6 +6,12 @@
 	const { amber, orange, yellow } = colors;
 
 	export let patterns: string[];
+	export let width = 490;
+	export let height = 490;
+	export let line = 10;
+
+	const targetWidth = width - line;
+	const targetHeight = height - line;
 
 	let pointNums: number[] = [];
 
@@ -57,7 +63,14 @@
 		preview = false;
 	}
 
-	function draw(x1: number, y1: number, x2: number, y2: number, stroke: string = orange[300], fill: string = orange[200]) {
+	function draw(
+		x1: number,
+		y1: number,
+		x2: number,
+		y2: number,
+		stroke: string = orange[300],
+		fill: string = orange[200]
+	) {
 		if (!ctx) return;
 
 		ctx.beginPath();
@@ -65,11 +78,11 @@
 		ctx.lineTo(x2, y2);
 
 		ctx.strokeStyle = stroke;
-		ctx.lineWidth = 10;
+		ctx.lineWidth = line;
 		ctx.stroke();
 
 		ctx.strokeStyle = fill;
-		ctx.lineWidth = 9;
+		ctx.lineWidth = 0.8 * line;
 		ctx.stroke();
 
 		ctx.closePath();
@@ -104,7 +117,38 @@
 		return tokens;
 	}
 
-	async function parseGcode(lines: string[]) {
+	function scaleNums(nums: number[]) {
+		if (nums.length < 2) return nums;
+
+		let minX = nums[0];
+		let maxX = nums[0];
+		let minY = nums[1];
+		let maxY = nums[1];
+
+		for (let j, i = 0; i < nums.length; i += 2) {
+			j = i + 1;
+			minX = Math.min(minX, nums[i]);
+			maxX = Math.max(maxX, nums[i]);
+			minY = Math.min(minY, nums[j]);
+			maxY = Math.max(maxY, nums[j]);
+		}
+
+		const fullWidth = maxX - minX;
+		const fullHeight = maxY - minY;
+
+		const scale = Math.min(1, targetWidth / fullWidth, targetHeight / fullHeight);
+		const offsetX = line / 2 + (targetWidth - fullWidth*scale) / 2;
+		const offsetY = line / 2 + (targetHeight - fullHeight*scale) / 2;
+
+		for (let i = 0; i < nums.length; i += 2) {
+			nums[i] = (nums[i] - minX) * scale + offsetX;
+			nums[i + 1] = (nums[i + 1] - minY) * scale + offsetY;
+		}
+
+		return nums;
+	}
+
+	function parseGcode(lines: string[]) {
 		let nums: number[] = [];
 		let x: number = 0;
 		let y: number = 0;
@@ -120,7 +164,7 @@
 				nums.push(x, y);
 			}
 		}
-		return nums;
+		return scaleNums(nums);
 	}
 
 	let patternSelector: HTMLSelectElement;
@@ -134,7 +178,7 @@
 			if (response.ok) {
 				const content = await response.text();
 				lines = content.split('\n');
-				pointNums = await parseGcode(lines);
+				pointNums = parseGcode(lines);
 				drawPoints(pointNums);
 			}
 		} catch (error) {
@@ -209,9 +253,9 @@
 		patternSelector.value = $currentFile.replace('.bin', '.gcode');
 		handlePatternChange();
 	});
-	
+
 	function startManualDraw() {
-		if(preview) return;
+		if (preview) return;
 		drawing = true;
 	}
 	function stopManualDraw() {
@@ -275,8 +319,8 @@
 		ontouchstart={startManualDraw}
 		ontouchmove={(e) => manualDraw(...getCanvasCoords(e))}
 		ontouchend={stopManualDraw}
-		width="490"
-		height="490"
+		{width}
+		{height}
 		class="touch-none bg-orange-100 max-w-[490px] w-full {preview ? 'pointer-events-none' : ''}"
 	>
 	</canvas>
