@@ -10,8 +10,8 @@
 	export let height = 490;
 	export let line = 10;
 
-	const targetWidth = width - line;
-	const targetHeight = height - line;
+	const maxWidth = width - line;
+	const maxHeight = height - line;
 
 	let pointNums: number[] = [];
 
@@ -136,9 +136,9 @@
 		const fullWidth = maxX - minX;
 		const fullHeight = maxY - minY;
 
-		const scale = Math.min(1, targetWidth / fullWidth, targetHeight / fullHeight);
-		const offsetX = line / 2 + (targetWidth - fullWidth*scale) / 2;
-		const offsetY = line / 2 + (targetHeight - fullHeight*scale) / 2;
+		const scale = Math.min(1, maxWidth / fullWidth, maxHeight / fullHeight);
+		const offsetX = line / 2 + (maxWidth - fullWidth*scale) / 2;
+		const offsetY = line / 2 + (maxHeight - fullHeight*scale) / 2;
 
 		for (let i = 0; i < nums.length; i += 2) {
 			nums[i] = (nums[i] - minX) * scale + offsetX;
