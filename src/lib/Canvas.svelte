@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import colors from 'tailwindcss/colors';
 	import { sendPatternFragments } from './websocket';
-	import { currentFile, machineStats, position, prevPosition, sendingPattern } from './stores';
+	import { currentFile, machineStats, position, prevPosition, sendingPattern, sentPacketCount, totalPacketCount } from './stores';
 	const { amber, orange, yellow } = colors;
 
 	export let patterns: string[];
@@ -297,8 +297,8 @@
 			<i class="fa-solid fa-eye"></i>
 		</button>
 		{#if $sendingPattern}
-			<button class="btn" aria-label="loading">
-				<span class="loading loading-spinner"></span>
+			<button class="btn" aria-label="sending progress">
+				{$sentPacketCount} / {$totalPacketCount}
 			</button>
 		{:else}
 			<button

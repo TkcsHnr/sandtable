@@ -33,3 +33,6 @@ export const machineStats = writable<MachineStats>(defaultMachineStats);
 export const sendingPattern = writable<boolean>(false);
 export const currentFile = writable<string>('');
 export const logEnabled = writable<boolean>(true);
+
+export const totalPacketCount = writable<number>(0);
+export const sentPacketCount = writable<number>(0);

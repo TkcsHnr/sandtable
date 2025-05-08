@@ -10,7 +10,9 @@ import {
 	feedrate,
 	led,
 	fan,
-	prevPosition
+	prevPosition,
+	sentPacketCount,
+	totalPacketCount
 } from './stores';
 
 enum BoolMask {
@@ -125,13 +127,12 @@ function handleBinaryMessage(data: any) {
 }
 
 export function openSocket(websocket_password: string) {
-	closeSocket();
-
 	ws = new WebSocket('wss://sandtable-websocket.onrender.com', ['webapp', websocket_password]);
 	ws.binaryType = 'arraybuffer';
 	socketState.set(ws.readyState);
 
 	ws.onopen = () => {
+		console.log('WebSocket connected');
 		socketState.set(ws.readyState);
 	};
 
@@ -142,18 +143,19 @@ export function openSocket(websocket_password: string) {
 	ws.onerror = (error) => {
 		console.error('WebSocket Error:', error);
 		socketState.set(ws.readyState);
-		openSocket(websocket_password);
 	};
 
 	ws.onclose = ({ code, reason }) => {
-		console.error(`Disconnected (Code: ${code}, Reason: ${reason.toString()})`);
+		console.warn(`WebSocket closed (Code: ${code}, Reason: ${reason})`);
 		socketState.set(ws.readyState);
-		openSocket(websocket_password);
+
+		console.log(`Reconnecting in 5000 ms...`);
+		setTimeout(() => openSocket(websocket_password), 5000);
 	};
 }
 
 export function closeSocket() {
-	if (ws && ws.readyState != WebSocket.CLOSED) {
+	if (ws) {
 		ws.close();
 		socketState.set(ws.readyState);
 	}
@@ -249,7 +251,7 @@ async function sendPacket(offset: number, nums: number, pointNums: number[]) {
 	}
 	ws.send(dataView.buffer);
 	await waitForAck();
-	console.log(dataView.buffer.byteLength, 'bytes sent');
+	sentPacketCount.update((old) => old + 1);
 }
 
 export async function sendPatternFragments(
@@ -259,6 +261,9 @@ export async function sendPatternFragments(
 ) {
 	if (ws.readyState != ws.OPEN) return;
 	sendingPattern.set(true);
+
+	sentPacketCount.set(0);
+	totalPacketCount.set(Math.ceil(pointNums.length / (coordinatePairs * 2)))
 
 	const filePath = name.replace('.gcode', '') + '.bin';
 	const charArray = new TextEncoder().encode(filePath);
